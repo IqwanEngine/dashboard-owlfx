@@ -1,0 +1,1106 @@
+<!--
+================================================================================
+IqwanEngine PU Prime Ecosystem
+File: dashboard-admin.html (Full Access - OWLFX Admin View)
+Crafted with precision by IqwanEngine
+Design Architecture: Vercel / Stripe / Apple Minimalist Financial Infrastructure
+Color Palette: Silver, White, Midnight Slate, Financial Blue
+================================================================================
+-->
+<!doctype html>
+<html lang="en" class="h-full">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>OWLFX x PU Prime | Institutional Admin Console</title>
+        <meta
+            name="description"
+            content="Institutional partner administration dashboard for client rebate assignment and BDM routing."
+        />
+
+        <!-- Tailwind CSS CDN -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: [
+                                "Inter",
+                                "-apple-system",
+                                "BlinkMacSystemFont",
+                                "Segoe UI",
+                                "Roboto",
+                                "sans-serif",
+                            ],
+                        },
+                        colors: {
+                            midnight: "#0f172a",
+                            financial: {
+                                50: "#eff6ff",
+                                100: "#dbeafe",
+                                500: "#3b82f6",
+                                600: "#2563eb",
+                                700: "#1d4ed8",
+                                800: "#1e40af",
+                            },
+                        },
+                    },
+                },
+            };
+        </script>
+
+        <!-- Inter Font -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+
+        <style>
+            body {
+                font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            }
+        </style>
+    </head>
+    <body
+        class="min-h-full bg-slate-50/60 text-slate-900 font-sans antialiased flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900 overflow-x-hidden"
+    >
+        <!-- Top Navigation -->
+        <header
+            class="sticky top-0 z-40 w-full bg-white border-b border-slate-200/80 shadow-[0_1px_2px_0_rgba(15,23,42,0.03)]"
+        >
+            <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between min-h-16 py-2.5 sm:py-0 gap-3">
+                    <!-- Left: OWLFX Brand & Portal Type -->
+                    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <img
+                            src="/OWLFXpng.webp"
+                            alt="OWLFX Logo"
+                            class="h-7 sm:h-9 w-auto object-contain shrink-0"
+                        />
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                                <span
+                                    class="text-xs sm:text-base font-bold tracking-tight text-slate-900 truncate"
+                                    >OWLFX</span
+                                >
+                                <span
+                                    class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-medium border border-blue-200/60 shrink-0"
+                                >
+                                    Admin Console
+                                </span>
+                            </div>
+                            <p class="hidden sm:block text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
+                                PU Prime Strategic Ecosystem
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Right: Actions (Strictly NO switch to BDM View) -->
+                    <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                        <!-- Direct link to Public Registration page -->
+                        <a
+                            href="daftar.html"
+                            target="_blank"
+                            class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors border border-slate-200/60"
+                            title="Open client registration form in new tab"
+                        >
+                            <span>Form Daftar</span>
+                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </a>
+
+                        <!-- Settings Button (Icon only on mobile) -->
+                        <button
+                            type="button"
+                            onclick="toggleSettingsModal()"
+                            class="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-md transition-colors shadow-sm"
+                            title="Settings"
+                            aria-label="Settings"
+                        >
+                            <svg
+                                class="w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                                />
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                            </svg>
+                            <span class="hidden sm:inline">Settings</span>
+                        </button>
+
+                        <!-- PostgREST Schema Cache Reload Button (hidden on mobile, accessible inside Settings modal) -->
+                        <button
+                            type="button"
+                            onclick="window.reloadSchemaCache()"
+                            class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-amber-50 hover:bg-amber-100 border border-amber-300/80 rounded-md transition-colors shadow-sm"
+                            title="Reload Supabase PostgREST Schema Cache (NOTIFY pgrst, 'reload schema';)"
+                        >
+                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span>Reload Schema</span>
+                        </button>
+
+                        <!-- Logout Button (Icon only on mobile) -->
+                        <a
+                            href="index.html"
+                            id="logout-btn"
+                            class="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 rounded-md transition-colors shadow-sm"
+                            title="Logout"
+                            aria-label="Logout"
+                        >
+                            <svg
+                                class="w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-500 hover:text-rose-600 transition-colors"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                />
+                            </svg>
+                            <span class="hidden sm:inline">Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Metric Bar (Sub-header) - Completely hidden on mobile (< 768px) -->
+        <section class="hidden md:block bg-white border-b border-slate-200/90 py-2.5">
+            <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+                <div
+                    class="flex flex-wrap items-center justify-between gap-3 text-xs"
+                >
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+                        <!-- Metric Item 1 -->
+                        <div
+                            class="flex items-center gap-2 px-3 py-1 rounded bg-slate-50 border border-slate-200/70"
+                        >
+                            <span
+                                class="w-1.5 h-1.5 rounded-full bg-blue-600"
+                            ></span>
+                            <span class="text-slate-500 font-normal"
+                                >Latest Reg:</span
+                            >
+                            <span
+                                id="metric-reg"
+                                class="font-semibold text-slate-800"
+                                >-</span
+                            >
+                        </div>
+
+                        <!-- Metric Item 2 -->
+                        <div
+                            class="flex items-center gap-2 px-3 py-1 rounded bg-slate-50 border border-slate-200/70"
+                        >
+                            <span
+                                class="w-1.5 h-1.5 rounded-full bg-amber-500"
+                            ></span>
+                            <span class="text-slate-500 font-normal"
+                                >Last Submit to BDM:</span
+                            >
+                            <span
+                                id="metric-submit"
+                                class="font-semibold text-slate-800"
+                                >-</span
+                            >
+                        </div>
+
+                        <!-- Metric Item 3 -->
+                        <div
+                            class="flex items-center gap-2 px-3 py-1 rounded bg-slate-50 border border-slate-200/70"
+                        >
+                            <span
+                                class="w-1.5 h-1.5 rounded-full bg-emerald-500"
+                            ></span>
+                            <span class="text-slate-500 font-normal"
+                                >Last BDM Update:</span
+                            >
+                            <span
+                                id="metric-update"
+                                class="font-semibold text-slate-800"
+                                >-</span
+                            >
+                        </div>
+                    </div>
+
+                    <div
+                        class="text-[11px] text-slate-500 flex items-center gap-2"
+                    >
+                        <span class="inline-flex items-center gap-1.5">
+                            <span
+                                id="realtime-status-pill"
+                                class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+                            ></span>
+                            <span id="realtime-status-text">Live Realtime Active</span>
+                        </span>
+                        <span class="text-slate-300">·</span>
+                        <span
+                            >Portal:
+                            <strong class="text-slate-700 font-medium"
+                                >Owl-Fx</strong
+                            ></span
+                        >
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Layout -->
+        <main
+            class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
+        >
+            <!-- Stat Cards: 4 minimal boxes (Strictly live Supabase data) - Compact 2x2 on Mobile -->
+            <div class="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4 lg:gap-6">
+                <!-- Card 1: Total Registered -->
+                <div
+                    class="bg-white border border-slate-200 rounded-xl p-2 sm:p-4 md:p-5 shadow-[0_1px_2px_0_rgba(15,23,42,0.03)] hover:border-slate-300 transition-colors"
+                >
+                    <div
+                        class="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-medium"
+                    >
+                        <span class="truncate">Total Registered</span>
+                        <span
+                            class="hidden md:inline-flex text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60"
+                            >Live</span
+                        >
+                    </div>
+                    <div class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2">
+                        <span
+                            id="stat-total"
+                            class="text-lg sm:text-2xl font-bold tracking-tight text-slate-900"
+                            >0</span
+                        >
+                        <span class="text-[10px] sm:text-xs text-slate-500">accounts</span>
+                    </div>
+                    <div class="hidden md:block mt-2 text-[11px] text-slate-400">
+                        Total live submissions received
+                    </div>
+                </div>
+
+                <!-- Card 2: Self Rebate -->
+                <div
+                    class="bg-white border border-slate-200 rounded-xl p-2 sm:p-4 md:p-5 shadow-[0_1px_2px_0_rgba(15,23,42,0.03)] hover:border-slate-300 transition-colors"
+                >
+                    <div
+                        class="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-medium"
+                    >
+                        <span class="truncate">Self Rebate</span>
+                        <span
+                            class="hidden md:inline-flex text-[11px] text-blue-700 font-semibold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60"
+                            >$14/lot</span
+                        >
+                    </div>
+                    <div class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2">
+                        <span
+                            id="stat-rebate"
+                            class="text-lg sm:text-2xl font-bold tracking-tight text-slate-900"
+                            >0</span
+                        >
+                        <span class="text-[10px] sm:text-xs text-slate-500">qualifying</span>
+                    </div>
+                    <div class="hidden md:block mt-2 text-[11px] text-slate-400">
+                        Remark: $14USD / 1Lot assigned
+                    </div>
+                </div>
+
+                <!-- Card 3: Pending BDM -->
+                <div
+                    class="bg-white border border-slate-200 rounded-xl p-2 sm:p-4 md:p-5 shadow-[0_1px_2px_0_rgba(15,23,42,0.03)] hover:border-slate-300 transition-colors"
+                >
+                    <div
+                        class="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-medium"
+                    >
+                        <span class="truncate">Pending BDM</span>
+                        <span
+                            class="hidden md:inline-flex text-[11px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60"
+                            >In Review</span
+                        >
+                    </div>
+                    <div class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2">
+                        <span
+                            id="stat-pending"
+                            class="text-lg sm:text-2xl font-bold tracking-tight text-amber-600"
+                            >0</span
+                        >
+                        <span class="text-[10px] sm:text-xs text-slate-500">in review</span>
+                    </div>
+                    <div class="hidden md:block mt-2 text-[11px] text-slate-400">
+                        Waiting PU Prime BDM update
+                    </div>
+                </div>
+
+                <!-- Card 4: No Rebate / Other -->
+                <div
+                    class="bg-white border border-slate-200 rounded-xl p-2 sm:p-4 md:p-5 shadow-[0_1px_2px_0_rgba(15,23,42,0.03)] hover:border-slate-300 transition-colors"
+                >
+                    <div
+                        class="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-medium"
+                    >
+                        <span class="truncate">No Rebate / Other</span>
+                        <span
+                            class="hidden md:inline-flex text-[11px] text-slate-600 font-semibold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60"
+                            >Direct</span
+                        >
+                    </div>
+                    <div class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2">
+                        <span
+                            id="stat-norebate"
+                            class="text-lg sm:text-2xl font-bold tracking-tight text-slate-900"
+                            >0</span
+                        >
+                        <span class="text-[10px] sm:text-xs text-slate-500">direct</span>
+                    </div>
+                    <div class="hidden md:block mt-2 text-[11px] text-slate-400">
+                        Standard or custom spread accounts
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Bar -->
+            <div
+                class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3"
+            >
+                <!-- Left: Filter Tabs -->
+                <div
+                    class="flex items-center gap-1 w-full md:w-auto p-1 bg-slate-100 rounded-lg border border-slate-200/60"
+                >
+                    <button
+                        type="button"
+                        onclick="setAdminFilter('all')"
+                        id="filter-all"
+                        class="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all bg-white text-slate-900 shadow-sm border border-slate-200/60"
+                    >
+                        All
+                        <span
+                            class="ml-1 text-[11px] text-slate-500"
+                            id="count-all"
+                            >(0)</span
+                        >
+                    </button>
+                    <button
+                        type="button"
+                        onclick="setAdminFilter('new')"
+                        id="filter-new"
+                        class="px-3.5 py-1.5 text-xs font-medium rounded-md transition-all text-slate-600 hover:text-slate-900"
+                    >
+                        New
+                        <span
+                            class="ml-1 text-[11px] text-slate-500"
+                            id="count-new"
+                            >(0)</span
+                        >
+                    </button>
+                    <button
+                        type="button"
+                        onclick="setAdminFilter('pending')"
+                        id="filter-pending"
+                        class="px-3.5 py-1.5 text-xs font-medium rounded-md transition-all text-slate-600 hover:text-slate-900"
+                    >
+                        Pending
+                        <span
+                            class="ml-1 text-[11px] text-slate-500"
+                            id="count-pending"
+                            >(0)</span
+                        >
+                    </button>
+                    <button
+                        type="button"
+                        onclick="setAdminFilter('complete')"
+                        id="filter-complete"
+                        class="px-3.5 py-1.5 text-xs font-medium rounded-md transition-all text-slate-600 hover:text-slate-900"
+                    >
+                        Complete
+                        <span
+                            class="ml-1 text-[11px] text-slate-500"
+                            id="count-complete"
+                            >(0)</span
+                        >
+                    </button>
+                </div>
+
+                <!-- Right: Search Input Bar & Desktop-Only CSV Export -->
+                <div class="flex items-center gap-2.5 w-full md:w-auto">
+                    <div class="relative w-full md:w-80">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"
+                        >
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            id="admin-search-input"
+                            placeholder="Search name, email, phone, state..."
+                            class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600 transition-colors"
+                        />
+                    </div>
+
+                    <!-- Desktop-Only CSV Export Button (Strictly hidden on mobile < 768px) -->
+                    <button
+                        type="button"
+                        id="admin-export-csv-btn"
+                        onclick="if(window.exportAdminClientsCSV) window.exportAdminClientsCSV();"
+                        title="Export current view to CSV (RFC 4180)"
+                        class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 shadow-2xs hover:shadow-xs transition-all shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20 active:scale-95"
+                    >
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data Table Container (Strictly rendered from live Supabase) -->
+            <div
+                class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden"
+            >
+                <!-- Desktop / Tablet Table View (hidden md:block) -->
+                <div class="hidden md:block w-full overflow-x-auto shadow-2xs">
+                    <table class="w-full text-left border-collapse min-w-[900px] text-xs">
+                        <thead>
+                            <tr
+                                class="border-b border-slate-200 bg-slate-50/75 text-[11px] font-semibold text-slate-600 uppercase tracking-wider"
+                            >
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-3 w-16 text-center font-semibold text-slate-700"
+                                >
+                                    Status
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 min-w-[170px]"
+                                >
+                                    Full Name
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 min-w-[190px]"
+                                >
+                                    Email Address
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
+                                >
+                                    Phone (WhatsApp)
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
+                                >
+                                    State
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
+                                >
+                                    Registration Date
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 min-w-[160px]"
+                                >
+                                    Remark
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 text-center font-semibold text-slate-700 min-w-[140px]"
+                                >
+                                    Action Status
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
+                                >
+                                    Update Date
+                                </th>
+                                <th
+                                    scope="col"
+                                    class="py-3.5 pr-4 pl-2 text-right font-semibold text-slate-700 w-24"
+                                >
+                                    Action
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody
+                            id="admin-table-body"
+                            class="divide-y divide-slate-100"
+                        >
+                            <!-- Live rows dynamically injected via src/js/app.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile View (block md:hidden - Card Transformation) -->
+                <div
+                    id="admin-cards-container"
+                    class="block md:hidden p-3 space-y-3 bg-slate-50/50"
+                >
+                    <!-- Live Mobile Client Cards injected dynamically via src/js/app.js -->
+                </div>
+
+                <!-- Empty State (Shown when 0 registrations exist) -->
+                <div
+                    id="no-results-state"
+                    class="py-16 text-center text-slate-400"
+                >
+                    <svg
+                        class="w-9 h-9 mx-auto mb-2 text-slate-300"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                        />
+                    </svg>
+                    <p class="text-xs font-medium text-slate-600">
+                        No client registrations in database.
+                    </p>
+                    <p class="text-[11px] text-slate-400 mt-1">
+                        Submissions from the public registration form (www.owlfx.my/daftar.html) will
+                        populate here live.
+                    </p>
+                </div>
+
+                <!-- Pagination Bar -->
+                <div
+                    class="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-between"
+                >
+                    <div class="text-xs text-slate-500 font-medium">
+                        Showing
+                        <span
+                            class="font-semibold text-slate-800"
+                            id="page-range"
+                            >0</span
+                        >
+                        records
+                    </div>
+                    <div class="text-[11px] text-slate-400">
+                        Auto-synced with Database Center
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Notification Toast -->
+        <div
+            id="toast"
+            class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-200 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs flex items-center gap-2 border border-slate-800"
+        >
+            <svg
+                id="toast-icon"
+                class="w-4 h-4 text-emerald-400 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M5 13l4 4L19 7"
+                />
+            </svg>
+            <span id="toast-message">Application updated successfully</span>
+        </div>
+
+        <!-- Overhauled "Ecosystem Settings" Modal -->
+        <!-- Component: IqwanEngine Settings & Workflow Modal -->
+<div
+    id="settings-modal"
+    class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-modal-title"
+>
+    <div
+        class="bg-white border border-slate-200/90 rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-6 my-auto text-slate-800"
+    >
+        <!-- Modal Header -->
+        <div class="flex items-start justify-between pb-4 border-b border-slate-100 gap-3">
+            <div>
+                <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 uppercase tracking-wider mb-1">
+                    Dashboard OWLFX Admin
+                </div>
+                <h3 id="settings-modal-title" class="text-base font-bold text-slate-900">
+                    Ecosystem Settings &amp; Workflow Guide
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    If nak tukar pilihan remark, WhatsApp rasmi, panduan aliran kerja (SOP), dan diagnostik proses. Untuk makluman setting ni tiada di Dashboard BDM.
+                </p>
+            </div>
+            <button
+                type="button"
+                onclick="toggleSettingsModal()"
+                aria-label="Tutup tetapan"
+                class="p-2 -mr-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SECTION A: Manage Dropdown Remarks (IqwanEngine Dynamic Routing) -->
+        <!-- ========================================== -->
+        <!-- Component: IqwanEngine UI Architecture -->
+<section class="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 shadow-xs space-y-3.5">
+    <!-- Header & Kategori -->
+    <div class="flex items-start justify-between gap-3">
+        <div class="space-y-0.5">
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-3.5 rounded-full bg-blue-600"></span>
+                <label for="new-remark-input" class="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                    A. Manage Dropdown Remarks
+                </label>
+            </div>
+            <p class="text-[11px] text-slate-500 pl-3.5 leading-relaxed">
+                Tambah remark yang diperlukan pada bahagian (<span class="font-medium text-slate-700">Contoh</span>), lepas tu pilih sama ada nak hantar pada BDM atau Do Nothing (Terus Complete).
+            </p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold bg-white text-blue-700 border border-blue-200/80 shadow-2xs shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+            Add Remark
+        </span>
+    </div>
+
+    <!-- Status Legend (Pengganti Teks Panjang yang Sarat) -->
+    <div class="flex flex-wrap items-center gap-2 pt-0.5 text-[11px]">
+        <span class="text-slate-400 font-medium">Action:</span>
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 font-medium text-[10px]">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            Submit to BDM (Pending)
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium text-[10px]">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Do Nothing (Direct Completed)
+        </span>
+    </div>
+
+    <!-- Active Remark Chips Container -->
+    <div 
+        id="remarks-chip-list" 
+        class="flex flex-wrap gap-2 p-3 bg-white rounded-xl border border-slate-200/80 min-h-[56px] items-center shadow-2xs transition-all"
+    >
+        <!-- Rendered dynamically via JS with action badges and delete buttons -->
+    </div>
+
+    <!-- Dedicated Add Option Box (Sub-kad Bersih) -->
+    <div class="p-3 bg-white/90 rounded-xl border border-slate-200/90 shadow-2xs space-y-2">
+        <span class="block text-[11px] font-semibold text-slate-700">
+            Tambah Pilihan Remark Baru
+        </span>
+
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <!-- Text Input -->
+            <div class="flex-1 relative">
+                <input
+                    type="text"
+                    id="new-remark-input"
+                    placeholder="Contoh: 12USD / 1Lot, VIP Rebate..."
+                    class="w-full bg-slate-50/60 hover:bg-white focus:bg-white border border-slate-200 focus:border-blue-600 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all"
+                />
+            </div>
+
+            <!-- Custom Styled Select with Chevron -->
+            <div class="relative sm:w-56">
+                <select
+                    id="new-remark-action"
+                    class="w-full appearance-none bg-slate-50/60 hover:bg-white focus:bg-white border border-slate-200 focus:border-blue-600 rounded-lg pl-3 pr-8 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all cursor-pointer"
+                    title="Pilih tindakan automatik bagi remark ini"
+                >
+                    <option value="Submit to BDM">Submit to BDM</option>
+                    <option value="Do Nothing">Do Nothing</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Add Button -->
+            <button
+                type="button"
+                onclick="addNewRemarkOption()"
+                class="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 shrink-0"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add Option</span>
+            </button>
+        </div>
+    </div>
+</section>
+
+        <!-- ========================================== -->
+        <!-- SECTION B: PU Prime Desk WhatsApp          -->
+        <!-- ========================================== -->
+        <section class="space-y-2 p-4 rounded-xl bg-slate-50/70 border border-slate-200/80">
+            <div class="flex items-center justify-between">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    B. PU Prime Official Desk WhatsApp
+                </label>
+                <span class="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Direct Contact
+                </span>
+            </div>
+            <p class="text-xs text-slate-500">
+                Nombor whatsapp untuk sebarang pertanyaan (Admin Haziq) akan nampak di ruangan Dashboard BDM.
+            </p>
+            <div class="flex items-center gap-2 pt-1">
+                <div class="relative flex-1">
+                    <input
+                        type="text"
+                        id="admin-wa-input"
+                        value="+60102263677"
+                        readonly
+                        class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono font-semibold text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                    />
+                </div>
+                <button
+                    type="button"
+                    id="edit-wa-btn"
+                    onclick="toggleEditWhatsApp()"
+                    title="Edit contact number"
+                    class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 bg-white rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-100 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-colors shadow-sm"
+                >
+                    <svg id="wa-edit-icon" class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span id="wa-edit-label">Edit</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- SECTION C: System Workflow Documentation  -->
+        <!-- ========================================== -->
+        <section class="space-y-3 p-4 rounded-xl bg-blue-50/40 border border-blue-200/80">
+            <div class="flex items-center justify-between">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-950">
+                        C. System Workflow Documentation
+                    </label>
+                    <span class="text-[11px] text-blue-700 font-medium">Penerangan SOP Aliran Kerja, atau macam mana cara sistem bekerja dan proses.</span>
+                </div>
+                <span class="text-[10px] text-blue-700 font-semibold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-2xs">
+                    Standard SOP
+                </span>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+                <!-- Step 1 -->
+                <div class="p-3 rounded-lg bg-white border border-blue-100 shadow-2xs">
+                    <div class="font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                        <span>Client Registration (daftar.html)</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 mt-1 pl-6 leading-relaxed">
+                        Client submits 4 fields (Full Name, Email, Phone, State). Database initializes record with <code class="bg-blue-50 text-blue-800 px-1 py-0.5 rounded">status: 'New'</code> and <code class="bg-blue-50 text-blue-800 px-1 py-0.5 rounded">action_status: 'New'</code>.
+                    </p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="p-3 rounded-lg bg-white border border-blue-100 shadow-2xs">
+                    <div class="font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                        <span>Admin Review (Dashboard Utama)</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 mt-1 pl-6 leading-relaxed">
+                        Data baru terus masuk dalam Admin Dashboard dengan status biru <strong>'New'</strong>. Rekod ini kekal disembunyikan daripada Dashboard BDM sehingga dihantar ke proses seterusnya.
+                    </p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="p-3 rounded-lg bg-white border border-blue-100 shadow-2xs">
+                    <div class="font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                        <span>Remark Assignment &amp; Confirmation</span>
+                    </div>
+                    <div class="text-[11px] text-slate-600 mt-1 pl-6 space-y-1 leading-relaxed">
+                        <p>Untuk tukar status dia, Admin perlu klik ikon pensel, pilih remark dropdown, dan sahkan melalui <code class="bg-slate-100 px-1 py-0.5 rounded">[✓]</code>:</p>
+                        <p class="pl-2 border-l-2 border-amber-300">
+                            • Kalau pilih <strong>$14USD / 1Lot</strong> status akan jadi <code class="bg-amber-50 text-amber-900 px-1 py-0.5 rounded">'Submit to BDM'</code> (Data akan terus masuk dalam Dashboard BDM.).
+                        </p>
+                        <p class="pl-2 border-l-2 border-emerald-300">
+                            • Kalau pilih <strong>No Rebate</strong>, <strong>Not Register Yet</strong>, atau <strong>Others</strong> status akan jadi <code class="bg-emerald-50 text-emerald-900 px-1 py-0.5 rounded">'Completed'</code> dan akan muncul Tarikh <code class="text-slate-700">Update di column sebelahnya.</code>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="p-3 rounded-lg bg-white border border-blue-100 shadow-2xs">
+                    <div class="font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">4</span>
+                        <span>BDM Queue &amp; Resolution</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 mt-1 pl-6 leading-relaxed">
+                        Hanya rekod <strong class="text-amber-800 bg-amber-50 px-1 py-0.5 rounded">Submit to BDM</strong> akan masuk ke Dashboard BDM dengan status kuning <strong>'Pending'</strong>. Apabila BDM klik <code class="bg-emerald-50 text-emerald-800 px-1 py-0.5 rounded">[✓ Complete]</code>, status berubah menjadi <strong>'Completed' (Hijau)</strong> di kedua-dua Dashboard beserta tarikh dan masa update.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- SECTION D: Realtime Channel Indicator      -->
+        <!-- ========================================== -->
+        <section class="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/90 space-y-3">
+            <div class="flex items-center justify-between">
+                <label class="block text-xs font-bold uppercase tracking-wider text-emerald-950">
+                    D. Realtime Channel Indicator
+                </label>
+                <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                    WebSocket Live
+                </span>
+            </div>
+
+            <p class="text-xs text-emerald-900 leading-relaxed">
+                Indikator status sambungan terus antara pelayar web <span class="font-semibold text-emerald-950">"OWLFX.MY"</span> dan Database. Memastikan sebarang update data client atau approval BDM ditunjukkan terus secara automatik tanpa perlu reload skrin.
+            </p>
+
+            <!-- Micro Progressive Disclosure: Nota Bantuan Ditekan Sahaja -->
+             <details class="group text-xs">
+                 <summary class="list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1.5 cursor-pointer text-[11px] font-medium text-emerald-800 hover:text-rose-700 select-none transition-colors">
+                     <span class="w-4 h-4 rounded-full border border-emerald-300 group-open:border-rose-300 group-open:bg-rose-100 flex items-center justify-center font-bold text-[10px] text-emerald-700 group-open:text-rose-700 transition-colors">?</span>
+                     <span class="underline decoration-dotted underline-offset-2">Bantuan sambungan websocket</span>
+                 </summary>
+                 <div class="mt-2 flex items-start gap-2 p-2.5 rounded-lg bg-rose-50/90 border border-rose-200 text-rose-700 animate-in fade-in duration-150">
+                     <svg class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                     </svg>
+                     <p class="text-[11px] font-medium leading-relaxed">
+                         Refer IqwanEngine kalau nak faham lebih lanjut mengenai aliran websocket dan database sinkronisasi.
+                     </p>
+                 </div>
+             </details>
+
+            <!-- Status Indicator Chip -->
+            <div id="modal-realtime-indicator" class="pt-0.5 text-xs">
+                <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white text-emerald-800 font-semibold border border-emerald-300 shadow-sm">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Live WebSocket active: <code class="font-mono text-emerald-950 font-normal">public:clients</code></span>
+                </span>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- SECTION E: PostgREST & Developer Sandbox   -->
+        <!-- (Tempat Test & Utiliti Schema Di Bawah)   -->
+        <!-- ========================================== -->
+        <section class="space-y-3.5 p-4 rounded-xl bg-amber-50/40 border border-amber-300/80">
+            <div class="flex items-center justify-between">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-amber-950">
+                        E. PostgREST Schema Cache &amp; Developer Tools
+                    </label>
+                    <span class="text-[11px] text-amber-800 font-medium">Zon test dan ujian &amp; Setting Code</span>
+                </div>
+                <span class="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                    Dev Sandbox
+                </span>
+            </div>
+
+            <p class="text-xs text-amber-950 leading-relaxed">
+                Gunakan bahagian ini sekiranya anda baru sahaja menambah atau mengubah column jadual pada Supabase (contoh kolum <code class="font-mono bg-white px-1.5 py-0.5 rounded border border-amber-200 text-amber-900">action_status</code>) supaya API faham struktur column paling latest tanpa perlu restart server.
+            </p>
+
+            <!-- Cache Commands Bersama Ikon Amaran Progressive Disclosure -->
+             <div class="space-y-2 pt-1">
+                 <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onclick="window.reloadSchemaCache()"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-700"
+                    >
+                        <svg class="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span>⚡ Update Cache</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick="navigator.clipboard.writeText('NOTIFY pgrst, \'reload schema\';'); if(window.showToast) window.showToast('Copied SQL to clipboard: NOTIFY pgrst, \'reload schema\';');"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    >
+                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        <span>Copy SQL: <code class="font-mono text-[11px]">NOTIFY pgrst...</code></span>
+                    </button>
+                </div>
+
+                <!-- Nota Tanda Seru Sebelah Kanan Butang -->
+                <div class="flex items-center gap-1.5 text-amber-900 text-[11px] bg-amber-100/70 border border-amber-200/90 px-2.5 py-1.5 rounded-lg">
+                    <svg class="w-4 h-4 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Jika tidak faham, boleh tekan <strong>Buttom IqwanEngine</strong> dibawah atau klik WhatsApp bantuan di bawah sekali.</span>
+                </div>
+            </div>
+
+            <!-- Test Seed Injection Sub-card -->
+            <div class="mt-3 p-3 rounded-lg bg-white border border-amber-200/90 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-900">Instant Verification Testing Data (3 Scenarios)</span>
+                    <span class="text-[10px] text-slate-500 font-mono">Test Sandbox</span>
+                </div>
+                <p class="text-[11px] text-slate-600 leading-relaxed">
+                    Keluarkan 3 contoh rekod serentak (1 New, 1 Pending BDM, 1 Completed) bagi menguji sistem dan cara aliran kerja dan pengubahan status secara live tanpa mengisi borang secara manual.
+                </p>
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                        type="button"
+                        onclick="window.seedTestClients()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600/40"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Masukkan 3 Test Records</span>
+                    </button>
+                    <button
+                        type="button"
+                        onclick="window.clearTestClients()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 hover:border-rose-200 text-xs font-medium rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-rose-200"
+                    >
+                        <span>Padam Test Records</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- Modal Footer                               -->
+        <!-- ========================================== -->
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+            <!-- Pautan WhatsApp Minimalis & Kemas -->
+            <a
+                href="https://wa.me/60172135172?text=Hai%20Iqwan%2C%20saya%20nak%20tanya%20pasal%20Admin%20Dashboard%20OWLFX%2C"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Hubungi WhatsApp IqwanEngine"
+                class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-emerald-700 hover:bg-emerald-50/70 border border-transparent hover:border-emerald-200 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            >
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="underline underline-offset-4 decoration-slate-300 hover:decoration-emerald-500">Whatsapp IqwanEngine</span>
+                <svg class="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+            </a>
+
+            <button
+                type="button"
+                onclick="toggleSettingsModal()"
+                class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/40 shrink-0"
+            >
+                Close Settings
+            </button>
+        </div>
+    </div>
+</div>
+
+        <!-- Full Institutional Desktop Footer (Hidden on mobile for maximum space) -->
+        <footer
+            class="hidden md:block w-full border-t border-slate-200/80 bg-white py-4 px-6 text-xs text-slate-500"
+        >
+            <div
+                class="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3"
+            >
+                <div class="flex items-center gap-3">
+                    <span class="font-semibold text-slate-800">&copy; 2026 OWLFX - Institutional Trading Ecosystem</span>
+                    <span class="text-slate-300">·</span>
+                    <span class="text-slate-500">PU Prime Strategic Clearinghouse</span>
+                </div>
+                <div class="flex items-center gap-4 text-slate-500">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200/60 text-[11px]">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live System Secure · 256-Bit SSL
+                    </span>
+                    <span class="text-slate-300">·</span>
+                    <span id="footer-wa-link" class="font-medium text-slate-700">Direct WhatsApp</span>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Admin Dashboard Controller Module (IqwanEngine Supabase Architecture - Zero localStorage) -->
+        <script type="module">
+            import { requireAuth, signOut } from "/src/js/auth.js";
+            import { 
+                initAdminDashboard, 
+                getAdminWhatsApp, 
+                DEFAULT_ADMIN_WA, 
+                toggleSettingsModal,
+                addNewRemarkOption,
+                removeRemarkOption,
+                toggleEditWhatsApp,
+                loadWhatsAppValue,
+                renderRemarksList
+            } from "/src/js/app.js";
+
+            // Bind to window for HTML inline onclick handlers
+            window.toggleSettingsModal = toggleSettingsModal;
+            window.addNewRemarkOption = addNewRemarkOption;
+            window.removeRemarkOption = removeRemarkOption;
+            window.toggleEditWhatsApp = toggleEditWhatsApp;
+            window.loadWhatsAppValue = loadWhatsAppValue;
+            window.renderRemarksList = renderRemarksList;
+            window.getAdminWhatsApp = getAdminWhatsApp;
+            window.DEFAULT_ADMIN_WA = DEFAULT_ADMIN_WA;
+
+            const authState = await requireAuth("superadmin");
+
+            if (authState) {
+                await initAdminDashboard();
+                loadWhatsAppValue();
+            }
+
+            const logoutBtn = document.getElementById("logout-btn");
+            if (logoutBtn) {
+                logoutBtn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    signOut();
+                });
+            }
+        </script>
+    </body>
+</html>
