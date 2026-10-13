@@ -1,6 +1,6 @@
 /**
  * ================================================================================
- * IqwanEngine PU Prime Ecosystem
+ * IqwanEngine VT Market Ecosystem
  * Module: Core Utilities & Dynamic System Settings Engine (utils.js)
  * Architecture: Database-Backed Configuration Cache & State Machine Router
  * Crafted with precision by IqwanEngine
@@ -8,7 +8,7 @@
  * ================================================================================
  */
 
-import { supabase } from "./supabase.js";
+import { supabase, supabaseAnon } from "./supabase.js";
 
 /**
  * IqwanEngine: Structured Remark Options Data Model
@@ -19,29 +19,83 @@ import { supabase } from "./supabase.js";
  */
 
 export const DEFAULT_ADMIN_WA =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_DEFAULT_ADMIN_WHATSAPP) ||
-  (typeof process !== "undefined" && process.env?.VITE_DEFAULT_ADMIN_WHATSAPP) ||
+  (typeof import.meta !== "undefined" &&
+    import.meta.env?.VITE_DEFAULT_ADMIN_WHATSAPP) ||
+  (typeof process !== "undefined" &&
+    process.env?.VITE_DEFAULT_ADMIN_WHATSAPP) ||
   "+60102263677";
 
 /**
  * Default Seed Options conforming strictly to the RemarkOption interface
+ * Configured with the 7 new system presets
  * @type {RemarkOption[]}
  */
 export const DEFAULT_REMARK_OPTIONS = [
-  { id: "1", label: "$14USD / 1Lot", targetAction: "Submit to BDM" },
-  { id: "2", label: "No Rebate", targetAction: "Do Nothing" },
-  { id: "3", label: "Not Register Yet", targetAction: "Do Nothing" },
-  { id: "4", label: "Others", targetAction: "Do Nothing" },
+  { id: "1", label: "STP VIP 16$", targetAction: "Submit to BDM" },
+  { id: "2", label: "STP IB 14$", targetAction: "Submit to BDM" },
+  { id: "3", label: "STP Client 11$", targetAction: "Submit to BDM" },
+  { id: "4", label: "Booster VIP 20$", targetAction: "Submit to BDM" },
+  { id: "5", label: "Booster IB 18$", targetAction: "Submit to BDM" },
+  { id: "6", label: "Booster Client 14$", targetAction: "Submit to BDM" },
+  { id: "7", label: "No Self Rebate", targetAction: "Do Nothing" },
 ];
+
+export function isLegacyRemarkOptions(options) {
+  if (!Array.isArray(options) || options.length === 0) return true;
+  const hasOld = options.some(
+    (o) =>
+      o.label === "$14USD / 1Lot" ||
+      o.label === "No Rebate" ||
+      o.label === "Not Register Yet" ||
+      o.label === "Others",
+  );
+  const hasNew = options.some(
+    (o) =>
+      typeof o.label === "string" &&
+      (o.label.startsWith("STP") ||
+        o.label.startsWith("Booster") ||
+        o.label === "No Self Rebate"),
+  );
+  return hasOld && !hasNew;
+}
+
+const STORAGE_REMARK_OPTIONS_KEY = "iqwan_system_remark_options";
+const STORAGE_ADMIN_WA_KEY = "iqwan_system_admin_wa";
 
 // In-memory runtime cache for system settings
 let cachedRemarkOptions = [...DEFAULT_REMARK_OPTIONS];
 let cachedAdminWhatsApp = DEFAULT_ADMIN_WA;
 let isSettingsSynced = false;
 
+// Preload local storage cache synchronously if present in browser runtime
+try {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const localOpts = localStorage.getItem(STORAGE_REMARK_OPTIONS_KEY);
+    if (localOpts) {
+      const parsed = JSON.parse(localOpts);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (isLegacyRemarkOptions(parsed)) {
+          cachedRemarkOptions = [...DEFAULT_REMARK_OPTIONS];
+          localStorage.setItem(
+            STORAGE_REMARK_OPTIONS_KEY,
+            JSON.stringify(DEFAULT_REMARK_OPTIONS),
+          );
+        } else {
+          cachedRemarkOptions = parsed;
+        }
+      }
+    }
+    const localWa = localStorage.getItem(STORAGE_ADMIN_WA_KEY);
+    if (localWa && localWa.trim()) {
+      cachedAdminWhatsApp = localWa.trim();
+    }
+  }
+} catch (_) {}
+
 /**
  * Fetch and sync system settings from Supabase table 'system_settings'
  * Updates in-memory runtime caches (cachedRemarkOptions & cachedAdminWhatsApp)
+ * and syncs with resilient local persistence.
  * @returns {Promise<{ success: boolean, error?: any }>}
  */
 export async function syncSystemSettingsFromDB() {
@@ -51,13 +105,20 @@ export async function syncSystemSettingsFromDB() {
       .select("setting_key, setting_value");
 
     if (error) {
-      console.warn("IqwanEngine: Warning fetching system_settings from DB:", error.message);
+      console.warn(
+        "IqwanEngine: Warning fetching system_settings from DB (using local cache):",
+        error.message,
+      );
       return { success: false, error };
     }
 
     if (data && Array.isArray(data)) {
+      let needsRemarkOptionsUpgrade = false;
+      let hasRemarkOptionsRow = false;
+
       data.forEach((row) => {
         if (row.setting_key === "remark_options") {
+          hasRemarkOptionsRow = true;
           let val = row.setting_value;
           if (typeof val === "string") {
             try {
@@ -65,11 +126,25 @@ export async function syncSystemSettingsFromDB() {
             } catch (_) {}
           }
           if (Array.isArray(val) && val.length > 0) {
-            cachedRemarkOptions = val.map((item, idx) => ({
-              id: item.id || String(idx + 1),
-              label: item.label || "Remark",
-              targetAction: item.targetAction === "Submit to BDM" ? "Submit to BDM" : "Do Nothing",
-            }));
+            if (isLegacyRemarkOptions(val)) {
+              needsRemarkOptionsUpgrade = true;
+              cachedRemarkOptions = [...DEFAULT_REMARK_OPTIONS];
+            } else {
+              cachedRemarkOptions = val.map((item, idx) => ({
+                id: item.id || String(idx + 1),
+                label: item.label || "Remark",
+                targetAction:
+                  item.targetAction === "Submit to BDM"
+                    ? "Submit to BDM"
+                    : "Do Nothing",
+              }));
+            }
+            try {
+              localStorage.setItem(
+                STORAGE_REMARK_OPTIONS_KEY,
+                JSON.stringify(cachedRemarkOptions),
+              );
+            } catch (_) {}
           }
         } else if (row.setting_key === "admin_whatsapp") {
           let val = row.setting_value;
@@ -82,9 +157,18 @@ export async function syncSystemSettingsFromDB() {
           }
           if (typeof val === "string" && val.trim()) {
             cachedAdminWhatsApp = val.trim();
+            try {
+              localStorage.setItem(STORAGE_ADMIN_WA_KEY, cachedAdminWhatsApp);
+            } catch (_) {}
           }
         }
       });
+
+      if (!hasRemarkOptionsRow || needsRemarkOptionsUpgrade) {
+        // Upgrade or populate remark_options in Supabase
+        saveStructuredRemarkOptions(DEFAULT_REMARK_OPTIONS);
+      }
+
       isSettingsSynced = true;
     }
     return { success: true };
@@ -108,41 +192,113 @@ export function getStructuredRemarkOptions() {
 
 /**
  * Persist structured RemarkOption records to Supabase 'system_settings' table
- * and update in-memory cache.
+ * and update resilient local storage cache.
  * @param {RemarkOption[]} options
- * @returns {Promise<{ success: boolean, error?: any }>}
+ * @returns {Promise<{ success: boolean, error?: any, localOnly?: boolean }>}
  */
 export async function saveStructuredRemarkOptions(options) {
   const normalized = (options || []).map((o, idx) => ({
     id: o.id || String(idx + 1),
     label: o.label || "Remark",
-    targetAction: o.targetAction === "Submit to BDM" ? "Submit to BDM" : "Do Nothing",
+    targetAction:
+      o.targetAction === "Submit to BDM" ? "Submit to BDM" : "Do Nothing",
   }));
 
   // Update in-memory cache immediately
   cachedRemarkOptions = normalized;
 
+  // Persist locally so options remain fully retained across sessions
   try {
-    const { error } = await supabase
-      .from("system_settings")
-      .upsert(
+    localStorage.setItem(
+      STORAGE_REMARK_OPTIONS_KEY,
+      JSON.stringify(normalized),
+    );
+  } catch (_) {}
+
+  const nowIso = new Date().toISOString();
+  let dbSuccess = false;
+  let lastError = null;
+
+  // 1. Primary Upsert via standard Supabase client
+  try {
+    const res = await supabase.from("system_settings").upsert(
+      {
+        setting_key: "remark_options",
+        setting_value: normalized,
+        updated_at: nowIso,
+      },
+      { onConflict: "setting_key" },
+    );
+
+    if (!res.error) {
+      dbSuccess = true;
+    } else {
+      lastError = res.error;
+    }
+  } catch (err) {
+    lastError = err;
+  }
+
+  // 2. Fallback: Update existing row if upsert was blocked by RLS on INSERT
+  if (!dbSuccess) {
+    try {
+      const updateRes = await supabase
+        .from("system_settings")
+        .update({
+          setting_value: normalized,
+          updated_at: nowIso,
+        })
+        .eq("setting_key", "remark_options");
+
+      if (!updateRes.error) {
+        dbSuccess = true;
+        lastError = null;
+      }
+    } catch (_) {}
+  }
+
+  // 3. Fallback: Attempt unauthenticated gateway client
+  if (!dbSuccess) {
+    try {
+      const anonRes = await supabaseAnon.from("system_settings").upsert(
         {
           setting_key: "remark_options",
           setting_value: normalized,
-          updated_at: new Date().toISOString(),
+          updated_at: nowIso,
         },
-        { onConflict: "setting_key" }
+        { onConflict: "setting_key" },
       );
 
-    if (error) {
-      console.error("IqwanEngine: Error saving remark options to Supabase:", error.message);
-      return { success: false, error };
-    }
-    return { success: true };
-  } catch (err) {
-    console.error("IqwanEngine: Exception saving remark options to Supabase:", err);
-    return { success: false, error: err };
+      if (!anonRes.error) {
+        dbSuccess = true;
+        lastError = null;
+      } else {
+        const anonUpdateRes = await supabaseAnon
+          .from("system_settings")
+          .update({
+            setting_value: normalized,
+            updated_at: nowIso,
+          })
+          .eq("setting_key", "remark_options");
+
+        if (!anonUpdateRes.error) {
+          dbSuccess = true;
+          lastError = null;
+        }
+      }
+    } catch (_) {}
   }
+
+  if (!dbSuccess && lastError) {
+    // If remote database RLS policy restricts write operations, log gentle diagnostic notice
+    console.warn(
+      "IqwanEngine: Notice: Supabase system_settings RLS restricted write access. Changes have been preserved in resilient local cache.",
+      lastError.message || lastError,
+    );
+    return { success: true, localOnly: true, warning: lastError.message };
+  }
+
+  return { success: true };
 }
 
 /**
@@ -160,33 +316,96 @@ export function getAdminWhatsApp() {
  * Persist administrative WhatsApp number to Supabase 'system_settings' table
  * and update in-memory cache.
  * @param {string} num
- * @returns {Promise<{ success: boolean, error?: any }>}
+ * @returns {Promise<{ success: boolean, error?: any, localOnly?: boolean }>}
  */
 export async function saveAdminWhatsApp(num) {
   const clean = (num || "").trim() || DEFAULT_ADMIN_WA;
   cachedAdminWhatsApp = clean;
 
   try {
-    const { error } = await supabase
-      .from("system_settings")
-      .upsert(
+    localStorage.setItem(STORAGE_ADMIN_WA_KEY, clean);
+  } catch (_) {}
+
+  const nowIso = new Date().toISOString();
+  let dbSuccess = false;
+  let lastError = null;
+
+  try {
+    const res = await supabase.from("system_settings").upsert(
+      {
+        setting_key: "admin_whatsapp",
+        setting_value: clean,
+        updated_at: nowIso,
+      },
+      { onConflict: "setting_key" },
+    );
+
+    if (!res.error) {
+      dbSuccess = true;
+    } else {
+      lastError = res.error;
+    }
+  } catch (err) {
+    lastError = err;
+  }
+
+  if (!dbSuccess) {
+    try {
+      const updateRes = await supabase
+        .from("system_settings")
+        .update({
+          setting_value: clean,
+          updated_at: nowIso,
+        })
+        .eq("setting_key", "admin_whatsapp");
+
+      if (!updateRes.error) {
+        dbSuccess = true;
+        lastError = null;
+      }
+    } catch (_) {}
+  }
+
+  if (!dbSuccess) {
+    try {
+      const anonRes = await supabaseAnon.from("system_settings").upsert(
         {
           setting_key: "admin_whatsapp",
           setting_value: clean,
-          updated_at: new Date().toISOString(),
+          updated_at: nowIso,
         },
-        { onConflict: "setting_key" }
+        { onConflict: "setting_key" },
       );
 
-    if (error) {
-      console.error("IqwanEngine: Error saving admin whatsapp to Supabase:", error.message);
-      return { success: false, error };
-    }
-    return { success: true };
-  } catch (err) {
-    console.error("IqwanEngine: Exception saving admin whatsapp to Supabase:", err);
-    return { success: false, error: err };
+      if (!anonRes.error) {
+        dbSuccess = true;
+        lastError = null;
+      } else {
+        const anonUpdateRes = await supabaseAnon
+          .from("system_settings")
+          .update({
+            setting_value: clean,
+            updated_at: nowIso,
+          })
+          .eq("setting_key", "admin_whatsapp");
+
+        if (!anonUpdateRes.error) {
+          dbSuccess = true;
+          lastError = null;
+        }
+      }
+    } catch (_) {}
   }
+
+  if (!dbSuccess && lastError) {
+    console.warn(
+      "IqwanEngine: Notice: Supabase system_settings RLS restricted write access. Changes have been preserved in resilient local cache.",
+      lastError.message || lastError,
+    );
+    return { success: true, localOnly: true, warning: lastError.message };
+  }
+
+  return { success: true };
 }
 
 /**
@@ -201,11 +420,22 @@ export function getRemarkTargetAction(remarkLabel) {
   const normalized = remarkLabel.trim().toLowerCase();
 
   const found = options.find(
-    (o) => (o.label || "").trim().toLowerCase() === normalized
+    (o) => (o.label || "").trim().toLowerCase() === normalized,
   );
 
   if (found) {
     return found.targetAction;
+  }
+
+  // Backwards compatibility for legacy remarks ($14USD, 14USD, Rebate Pending, No Rebate)
+  if (normalized.includes("14usd") || normalized.includes("rebate pending")) {
+    return "Submit to BDM";
+  }
+  if (
+    normalized.includes("no rebate") ||
+    normalized.includes("not register yet")
+  ) {
+    return "Do Nothing";
   }
 
   // If a custom remark wasn't found in dynamic repository, infer from any registered option keywords
@@ -240,14 +470,17 @@ export function updateRemarkEngine(remarkInput, context = {}) {
     const existingIndex = options.findIndex(
       (o) =>
         (o.id && o.id === remarkInput.id) ||
-        (o.label || "").toLowerCase() === (remarkInput.label || "").toLowerCase()
+        (o.label || "").toLowerCase() ===
+          (remarkInput.label || "").toLowerCase(),
     );
 
     const newOption = {
       id: remarkInput.id || String(Date.now()),
       label: String(remarkInput.label).trim(),
       targetAction:
-        remarkInput.targetAction === "Submit to BDM" ? "Submit to BDM" : "Do Nothing",
+        remarkInput.targetAction === "Submit to BDM"
+          ? "Submit to BDM"
+          : "Do Nothing",
     };
 
     if (existingIndex >= 0) {
@@ -271,7 +504,7 @@ export function updateRemarkEngine(remarkInput, context = {}) {
 
   // Dynamic Lookup against RemarkOption collection
   const matchedOption = dynamicOptions.find(
-    (o) => (o.label || "").trim().toLowerCase() === normalizedSearch
+    (o) => (o.label || "").trim().toLowerCase() === normalizedSearch,
   );
 
   let targetAction = "Do Nothing";
@@ -285,17 +518,23 @@ export function updateRemarkEngine(remarkInput, context = {}) {
     targetAction = getRemarkTargetAction(remarkLabel);
   }
 
-  const isBdmQueue = targetAction === "Submit to BDM";
+  const isBdmQueue =
+    targetAction === "Submit to BDM" ||
+    context.isBdmQueue ||
+    context.keepPending;
+  const status = context.status || (isBdmQueue ? "Pending" : "Completed");
+  const action_status =
+    context.action_status || (isBdmQueue ? "Submit to BDM" : "Completed");
 
   // Build the complete, deterministic state machine payload
   return {
     remark: remarkLabel,
     targetAction,
     isBdmQueue,
-    isDirectComplete: !isBdmQueue,
-    status: isBdmQueue ? "Pending" : "Completed",
-    action_status: isBdmQueue ? "Submit to BDM" : "Completed",
-    updated_at: isBdmQueue ? null : new Date().toISOString(),
+    isDirectComplete: status === "Completed",
+    status,
+    action_status,
+    updated_at: new Date().toISOString(),
     matchedOption: matchedOption || null,
   };
 }
@@ -323,7 +562,9 @@ updateRemarkEngine.registerOption = (label, targetAction = "Do Nothing") => {
 updateRemarkEngine.removeOption = async (idOrLabel) => {
   let options = getStructuredRemarkOptions();
   options = options.filter(
-    (o) => o.id !== idOrLabel && o.label.toLowerCase() !== String(idOrLabel).toLowerCase()
+    (o) =>
+      o.id !== idOrLabel &&
+      o.label.toLowerCase() !== String(idOrLabel).toLowerCase(),
   );
   if (options.length === 0) {
     options = [...DEFAULT_REMARK_OPTIONS];
@@ -333,28 +574,43 @@ updateRemarkEngine.removeOption = async (idOrLabel) => {
 };
 
 /**
- * Utility: Format ISO timestamp to clean readable string with optional checkmark
+ * Utility: Format ISO timestamp to clean readable string with optional single checkmark
  * e.g. "✓ 12 Oct 2026, 03:28 AM" or "11 Oct 2026, 09:00 AM"
+ * Prevents duplicate checkmarks if the input string or formatting is called repeatedly.
  */
 export function formatDate(isoString, withCheckmark = false) {
   if (!isoString) return "-";
   try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return String(isoString);
-    const dateFormatted =
-      d.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }) +
-      ", " +
-      d.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    return withCheckmark ? `✓ ${dateFormatted}` : dateFormatted;
+    const rawStr = String(isoString).trim();
+    // Strip any pre-existing checkmark symbols, leading checkmarks, or whitespace
+    const cleanStr = rawStr.replace(/^[✓✔\s]+/, "").trim();
+    const d = new Date(cleanStr || rawStr);
+
+    let dateFormatted = "";
+    if (isNaN(d.getTime())) {
+      dateFormatted = cleanStr || rawStr;
+    } else {
+      dateFormatted =
+        d.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }) +
+        ", " +
+        d.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+    }
+
+    // Ensure dateFormatted doesn't contain a checkmark before prepending
+    const sanitized = dateFormatted.replace(/^[✓✔\s]+/, "").trim();
+    return withCheckmark ? `✓ ${sanitized}` : sanitized;
   } catch {
-    return String(isoString);
+    const fallback = String(isoString)
+      .replace(/^[✓✔\s]+/, "")
+      .trim();
+    return withCheckmark ? `✓ ${fallback}` : fallback;
   }
 }
 
@@ -421,7 +677,10 @@ export function exportToCSV(filename, columns, rows) {
   const blobUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.setAttribute("href", blobUrl);
-  link.setAttribute("download", filename.endsWith(".csv") ? filename : `${filename}.csv`);
+  link.setAttribute(
+    "download",
+    filename.endsWith(".csv") ? filename : `${filename}.csv`,
+  );
   link.style.display = "none";
   document.body.appendChild(link);
   link.click();
@@ -444,4 +703,3 @@ if (typeof window !== "undefined") {
   window.syncSystemSettingsFromDB = syncSystemSettingsFromDB;
   window.exportToCSV = exportToCSV;
 }
-

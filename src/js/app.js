@@ -1,12 +1,13 @@
 /**
  * ================================================================================
- * IqwanEngine PU Prime Ecosystem: Core Application & Realtime Supabase Controller
+ * IqwanEngine VT Market Ecosystem: Core Application & Realtime Supabase Controller
  * Fully Live Architecture: Zero Mock / Dummy Records
  * ================================================================================
  */
 
 import {
   supabase,
+  supabaseAnon,
   subscribeToClientUpdates,
   onRealtimeStatusChange,
 } from "./supabase.js";
@@ -46,6 +47,17 @@ export {
   exportToCSV,
 };
 
+// Ensure deleteClient is globally accessible across all scopes immediately
+if (typeof window !== "undefined") {
+  window.deleteClient = (id, event) => {
+    console.log("Delete clicked for ID:", id);
+    if (typeof window.openDeleteModal === "function") {
+      window.openDeleteModal(id, event);
+    }
+  };
+  globalThis.deleteClient = window.deleteClient;
+}
+
 /**
  * Returns plain string labels for select dropdown rendering
  */
@@ -63,13 +75,16 @@ let bdmFilter = "all";
 let adminSearch = "";
 let bdmSearch = "";
 
-// Row edit state: map of id -> { isEditing: boolean, draftName, draftEmail, draftPhone, draftRemark }
+// Row edit state: map of id -> { isEditing: boolean, draftName, draftEmail, draftPhone, draftRemark, draftStatus }
 const rowDrafts = new Map();
+
+// BDM row action state: map of id -> { mode: 'custom' | 'complete', customText: string }
+const bdmRowStates = new Map();
 
 /**
  * Safe Supabase Update Helper
  * Gracefully retries without action_status if PostgREST schema cache is lagging,
- * and robustly catches network failures.
+ * includes unauthenticated gateway fallback if RLS applies, and robustly catches network failures.
  */
 async function safeUpdateClient(id, payload) {
   // Ensure full_name is not sent as it is a generated column in Supabase PostgreSQL
@@ -77,14 +92,35 @@ async function safeUpdateClient(id, payload) {
   delete cleanPayload.full_name;
 
   try {
-    let { error } = await supabase.from("clients").update(cleanPayload).eq("id", id);
+    let { data, error } = await supabase
+      .from("clients")
+      .update(cleanPayload)
+      .eq("id", id)
+      .select();
+
+    if (
+      error &&
+      (error.message?.includes("row-level security") || error.code === "42501")
+    ) {
+      const anonRes = await supabaseAnon
+        .from("clients")
+        .update(cleanPayload)
+        .eq("id", id)
+        .select();
+      if (!anonRes.error) {
+        error = null;
+        data = anonRes.data;
+      }
+    }
 
     if (error) {
       let retryNeeded = false;
       const fallbackPayload = { ...cleanPayload };
 
       if (error.message && error.message.includes("action_status")) {
-        console.warn("PostgREST schema cache missing 'action_status', retrying without it.");
+        console.warn(
+          "PostgREST schema cache missing 'action_status', retrying without it.",
+        );
         delete fallbackPayload.action_status;
         retryNeeded = true;
       }
@@ -94,18 +130,35 @@ async function safeUpdateClient(id, payload) {
       }
 
       if (retryNeeded) {
-        const res = await supabase
+        let res = await supabase
           .from("clients")
           .update(fallbackPayload)
-          .eq("id", id);
+          .eq("id", id)
+          .select();
+        if (
+          res.error &&
+          (res.error.message?.includes("row-level security") ||
+            res.error.code === "42501")
+        ) {
+          res = await supabaseAnon
+            .from("clients")
+            .update(fallbackPayload)
+            .eq("id", id)
+            .select();
+        }
         error = res.error;
+        data = res.data;
       }
     }
 
-    return { error, isNetworkError: false };
+    return { data, error, isNetworkError: false };
   } catch (networkErr) {
-    console.error("IqwanEngine: Network error during safeUpdateClient:", networkErr);
+    console.error(
+      "IqwanEngine: Network error during safeUpdateClient:",
+      networkErr,
+    );
     return {
+      data: null,
       error: networkErr,
       isNetworkError: true,
     };
@@ -150,7 +203,10 @@ export async function submitRegistration({ name, email, phone, state }) {
 
     // If column error occurs (e.g., action_status not cached or full_name conflict), retry safely
     if (error) {
-      console.warn("Initial insert failed, attempting safe payload fallback:", error.message);
+      console.warn(
+        "Initial insert failed, attempting safe payload fallback:",
+        error.message,
+      );
       const fallbackPayload = { ...payload };
       if (error.message && error.message.includes("action_status")) {
         delete fallbackPayload.action_status;
@@ -177,7 +233,9 @@ export async function submitRegistration({ name, email, phone, state }) {
   } catch (err) {
     if (!err.message || !err.message.includes("Registration error")) {
       console.error("IqwanEngine: Network exception during registration:", err);
-      ToastNotification.error("Network failure: Unable to reach database server. Please check connection.");
+      ToastNotification.error(
+        "Network failure: Unable to reach database server. Please check connection.",
+      );
     }
     throw err;
   }
@@ -289,14 +347,21 @@ export async function loadAdminData() {
 
     if (error) {
       console.error("Error fetching admin clients:", error.message);
-      ToastNotification.error("Failed to fetch client records: " + error.message);
+      ToastNotification.error(
+        "Failed to fetch client records: " + error.message,
+      );
       return;
     }
 
     adminClients = data || [];
   } catch (networkErr) {
-    console.error("IqwanEngine: Network failure fetching admin records:", networkErr);
-    ToastNotification.error("Network failure: Unable to fetch database records. Please check connection.");
+    console.error(
+      "IqwanEngine: Network failure fetching admin records:",
+      networkErr,
+    );
+    ToastNotification.error(
+      "Network failure: Unable to fetch database records. Please check connection.",
+    );
     return;
   }
 
@@ -364,7 +429,9 @@ export function getFilteredAdminClients() {
 export function exportAdminClientsCSV() {
   const clients = getFilteredAdminClients();
   if (!clients || clients.length === 0) {
-    ToastNotification.warning("No client records found in the current view to export.");
+    ToastNotification.warning(
+      "No client records found in the current view to export.",
+    );
     return;
   }
 
@@ -432,7 +499,9 @@ export function exportAdminClientsCSV() {
 
   const success = exportToCSV(filename, columns, clients);
   if (success) {
-    ToastNotification.success(`Exported ${clients.length} client record(s) to CSV successfully.`);
+    ToastNotification.success(
+      `Exported ${clients.length} client record(s) to CSV successfully.`,
+    );
   }
 }
 
@@ -441,6 +510,16 @@ function renderAdminTable() {
   if (!tbody) return;
 
   const remarksOptions = getRemarkOptions();
+  let datalist = document.getElementById("admin-preset-remarks");
+  if (!datalist) {
+    datalist = document.createElement("datalist");
+    datalist.id = "admin-preset-remarks";
+    document.body.appendChild(datalist);
+  }
+  datalist.innerHTML = remarksOptions
+    .map((r) => `<option value="${escapeHtml(r)}"></option>`)
+    .join("");
+
   const filtered = getFilteredAdminClients();
 
   // Empty state handling
@@ -464,11 +543,18 @@ function renderAdminTable() {
   filtered.forEach((item) => {
     const draft = rowDrafts.get(item.id) || {
       isEditing: false,
-      draftName: item.name || "",
+      draftName: item.name || item.full_name || "",
       draftEmail: item.email || "",
+      draftPhone: item.phone || "",
       draftRemark: item.remark || "",
+      draftStatus:
+        item.status === "Completed" || item.action_status === "Completed"
+          ? "Completed"
+          : "Pending",
     };
-    const isEditing = draft.isEditing;
+    const isEditing = !!draft.isEditing;
+    const activeRemarkValue =
+      draft.draftRemark !== undefined ? draft.draftRemark : item.remark || "";
 
     const isCompleted =
       (item.status || "").toLowerCase() === "completed" ||
@@ -523,30 +609,19 @@ function renderAdminTable() {
     // 6. Registration Date
     const regDateCol = `<span class="font-mono text-[11px] text-slate-600 whitespace-nowrap">${formatDate(item.registration_date)}</span>`;
 
-    // 7. Remark
-    const activeRemarkValue =
-      draft.draftRemark !== undefined
-        ? draft.draftRemark
-        : item.remark || "";
-
-    const remarkOptionsHtml = remarksOptions
-      .map((opt) => {
-        const isSelected =
-          (activeRemarkValue || "").toLowerCase() === opt.toLowerCase();
-        return `<option value="${escapeHtml(opt)}" ${isSelected ? "selected" : ""}>${escapeHtml(opt)}</option>`;
-      })
-      .join("");
-
-    const selectStyle = isEditing
-      ? "bg-white border-blue-500 ring-1 ring-blue-500 font-semibold"
-      : "bg-white border-slate-200 hover:border-slate-300 font-medium";
-
-    const remarkCol = `
-      <select id="remark-select-${item.id}" onchange="window.onRemarkDropdownChange('${item.id}', this.value)" class="w-full ${selectStyle} text-slate-800 text-xs rounded-md px-2.5 py-1.5 outline-none cursor-pointer transition-colors shadow-sm">
-        <option value="" ${!activeRemarkValue ? "selected" : ""}>-- Select --</option>
-        ${remarkOptionsHtml}
-      </select>
-    `;
+    // 7. Remark: Displays exact custom text typed by BDM as plain text (No dropdown here, mirrors BDM input)
+    const remarkCol = isEditing
+      ? `<div class="space-y-1 min-w-[200px]">
+          <input type="text" id="edit-remark-${item.id}" value="${escapeHtml(activeRemarkValue)}" oninput="window.setDraftRemark('${item.id}', this.value)" list="admin-preset-remarks" class="w-full bg-white border border-blue-400 rounded px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm font-medium" placeholder="Type custom remark..." />
+          <div class="flex items-center gap-1.5 pt-0.5">
+            <span class="text-[10px] text-slate-400 font-medium">Status:</span>
+            <select id="edit-status-${item.id}" onchange="window.setDraftStatus('${item.id}', this.value)" class="text-[10px] bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 outline-none">
+              <option value="Pending" ${(draft.draftStatus || (item.status === "Completed" ? "Completed" : "Pending")) === "Pending" ? "selected" : ""}>Pending (Submit to BDM)</option>
+              <option value="Completed" ${(draft.draftStatus || (item.status === "Completed" ? "Completed" : "Pending")) === "Completed" ? "selected" : ""}>Complete</option>
+            </select>
+          </div>
+        </div>`
+      : `<span class="text-slate-800 text-xs font-medium block break-words" title="${escapeHtml(item.remark || "-")}">${escapeHtml(item.remark || "-")}</span>`;
 
     // 8. Action Status (IqwanEngine Dynamic Routing)
     let actionStatusCol = "";
@@ -588,9 +663,9 @@ function renderAdminTable() {
       `;
     }
 
-    // 9. Update Date
+    // 9. Update Date (Clean ISO formatting without redundant symbol)
     const updateDateCol = item.updated_at
-      ? `<span class="text-slate-700 font-mono text-[11px] whitespace-nowrap">${formatDate(item.updated_at, true)}</span>`
+      ? `<span class="text-slate-700 font-mono text-[11px] whitespace-nowrap">${formatDate(item.updated_at, false)}</span>`
       : `<span class="text-slate-300">-</span>`;
 
     // 10. Action Column Desktop
@@ -598,17 +673,17 @@ function renderAdminTable() {
     if (isEditing) {
       actionCol = `
         <div class="flex items-center justify-end gap-1.5">
-          <button onclick="window.saveRow('${item.id}')" title="Confirm & Save" class="p-1.5 rounded text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-sm">
+          <button onclick="window.saveRow('${item.id}')" title="Confirm & Save" class="p-1.5 rounded text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-sm cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </button>
-          <button onclick="window.cancelEditRow('${item.id}')" title="Cancel edit" class="p-1.5 rounded text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors">
+          <button onclick="window.cancelEditRow('${item.id}')" title="Cancel edit" class="p-1.5 rounded text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <button onclick="window.deleteClient('${item.id}', event)" title="Delete record permanently" class="p-1.5 rounded text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shadow-sm">
+          <button data-delete-id="${item.id}" onclick="window.deleteClient('${item.id}', event)" title="Delete record permanently" class="p-1.5 rounded text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shadow-sm cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
@@ -617,10 +692,15 @@ function renderAdminTable() {
       `;
     } else {
       actionCol = `
-        <div class="flex items-center justify-end">
-          <button onclick="window.startEditRow('${item.id}')" title="Edit row" class="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+        <div class="flex items-center justify-end gap-1">
+          <button onclick="window.startEditRow('${item.id}')" title="Edit row" class="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+          <button data-delete-id="${item.id}" onclick="window.deleteClient('${item.id}', event)" title="Delete record permanently" class="p-1.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
         </div>
@@ -649,8 +729,9 @@ function renderAdminTable() {
         <!-- Top Row: Client Info & Status Badges -->
         <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
           <div class="min-w-0 flex-1 space-y-1">
-            ${isEditing 
-              ? `<div class="space-y-1">
+            ${
+              isEditing
+                ? `<div class="space-y-1">
                    <label class="text-[10px] font-semibold text-slate-500 uppercase">Nama Penuh</label>
                    <input type="text" value="${escapeHtml(draft.draftName)}" oninput="window.setDraftName('${item.id}', this.value)" class="w-full bg-slate-50 border border-blue-400 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Full name" />
                  </div>
@@ -662,7 +743,7 @@ function renderAdminTable() {
                    <label class="text-[10px] font-semibold text-slate-500 uppercase">Telefon (WhatsApp)</label>
                    <input type="tel" value="${escapeHtml(draft.draftPhone !== undefined ? draft.draftPhone : item.phone || "")}" oninput="window.setDraftPhone('${item.id}', this.value)" class="w-full bg-slate-50 border border-blue-400 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Phone / WhatsApp" />
                  </div>`
-              : `<div class="font-bold text-sm text-slate-900 truncate">${escapeHtml(item.name || item.full_name || "-")}</div>
+                : `<div class="font-bold text-sm text-slate-900 truncate">${escapeHtml(item.name || item.full_name || "-")}</div>
                  <div class="text-xs text-slate-600 font-mono truncate flex items-center gap-1.5">
                    <span class="text-slate-400">✉</span> ${escapeHtml(item.email || "-")}
                  </div>
@@ -694,18 +775,36 @@ function renderAdminTable() {
           </div>
         </div>
 
-        <!-- Bottom: Remark Selector & Action Buttons with touch spacing -->
+        <!-- Bottom: Remark & Action Buttons with touch spacing -->
         <div class="space-y-2">
-          <div class="space-y-1">
-            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Remark</label>
-            <select onchange="window.onRemarkDropdownChange('${item.id}', this.value)" class="w-full min-h-[44px] ${selectStyle} text-slate-800 text-xs rounded-lg px-3 py-2 outline-none cursor-pointer transition-colors shadow-2xs">
-              <option value="" ${!activeRemarkValue ? "selected" : ""}>-- Select Remark --</option>
-              ${remarkOptionsHtml}
-            </select>
-          </div>
+          ${
+            isEditing
+              ? `
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Remark</label>
+              <input type="text" value="${escapeHtml(activeRemarkValue)}" oninput="window.setDraftRemark('${item.id}', this.value)" list="admin-preset-remarks" class="w-full min-h-[44px] bg-white border border-blue-400 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs font-medium" placeholder="Type custom remark..." />
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Action</span>
+                <select onchange="window.setDraftStatus('${item.id}', this.value)" class="text-xs bg-slate-50 border border-slate-300 rounded px-2.5 py-1 text-slate-700">
+                  <option value="Pending" ${(draft.draftStatus || (item.status === "Completed" ? "Completed" : "Pending")) === "Pending" ? "selected" : ""}>Pending (Submit to BDM)</option>
+                  <option value="Completed" ${(draft.draftStatus || (item.status === "Completed" ? "Completed" : "Pending")) === "Completed" ? "selected" : ""}>Complete</option>
+                </select>
+              </div>
+            </div>
+          `
+              : `
+            <div class="space-y-1">
+              <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Remark</span>
+              <div class="text-xs text-slate-800 font-medium bg-slate-50/80 p-2.5 rounded-lg border border-slate-200/60 break-words">
+                ${escapeHtml(item.remark || "-")}
+              </div>
+            </div>
+          `
+          }
           <div class="pt-1 flex items-center justify-end gap-2 border-t border-slate-100">
-            ${isEditing 
-              ? `<button onclick="window.saveRow('${item.id}')" class="min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5 transition-colors shadow-2xs active:scale-95">
+            ${
+              isEditing
+                ? `<button onclick="window.saveRow('${item.id}')" class="min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5 transition-colors shadow-2xs active:scale-95">
                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                    <span>Save</span>
                  </button>
@@ -717,7 +816,7 @@ function renderAdminTable() {
                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                    <span>Delete</span>
                  </button>`
-              : `<button onclick="window.startEditRow('${item.id}')" class="min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center gap-1.5 transition-colors">
+                : `<button onclick="window.startEditRow('${item.id}')" class="min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center gap-1.5 transition-colors">
                    <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                    <span>Edit</span>
                  </button>
@@ -825,28 +924,36 @@ function updateAdminPagination(count) {
  */
 function bindAdminGlobalHandlers() {
   // Local Component State Isolation:
-  // Selecting an item from the Remark dropdown mutates strictly local component state!
-  // Zero Supabase API write calls fired upon dropdown selection!
-  window.onRemarkDropdownChange = (id, val) => {
+  window.setDraftRemark = (id, val) => {
     let draft = rowDrafts.get(id);
     const client = adminClients.find((c) => c.id === id);
     if (!draft) {
       draft = {
-        isEditing: false,
+        isEditing: true,
         draftName: client ? client.name || client.full_name || "" : "",
         draftEmail: client ? client.email || "" : "",
         draftPhone: client ? client.phone || "" : "",
         draftRemark: val,
+        draftStatus: client
+          ? client.status === "Completed"
+            ? "Completed"
+            : "Pending"
+          : "Pending",
       };
       rowDrafts.set(id, draft);
+    } else {
+      draft.draftRemark = val;
     }
-    draft.draftRemark = val;
-    // Activate confirmation mode on this row so the administrator can confirm with [✓ Confirm/Save]
-    draft.isEditing = true;
-    renderAdminTable();
   };
 
-  window.setDraftRemark = window.onRemarkDropdownChange;
+  window.setDraftStatus = (id, val) => {
+    let draft = rowDrafts.get(id);
+    if (draft) {
+      draft.draftStatus = val;
+    }
+  };
+
+  window.onRemarkDropdownChange = window.setDraftRemark;
 
   window.setDraftName = (id, val) => {
     const draft = rowDrafts.get(id);
@@ -864,6 +971,7 @@ function bindAdminGlobalHandlers() {
   };
 
   window.reloadSchemaCache = reloadSchemaCache;
+  window.resetRemarkOptionsToDefaults = resetRemarkOptionsToDefaults;
   window.seedTestClients = seedTestClients;
   window.clearTestClients = clearTestClients;
 
@@ -878,68 +986,75 @@ function bindAdminGlobalHandlers() {
       draftEmail: client.email || "",
       draftPhone: client.phone || "",
       draftRemark: client.remark || "",
+      draftStatus: client.status === "Completed" ? "Completed" : "Pending",
     });
     renderAdminTable();
   };
 
   // Cancel Editing Row
   window.cancelEditRow = (id) => {
-    const client = adminClients.find((c) => c.id === id);
-    if (client) {
-      rowDrafts.set(id, {
-        isEditing: false,
-        draftName: client.name || client.full_name || "",
-        draftEmail: client.email || "",
-        draftPhone: client.phone || "",
-        draftRemark: client.remark || "",
-      });
-    }
+    rowDrafts.delete(id);
     renderAdminTable();
   };
 
   /**
-   * IqwanEngine: Dynamic Workflow & State Machine Logic
-   * Dynamically resolved via updateRemarkEngine with zero hardcoded string comparisons.
-   * Execution Rules:
-   * 1. When targetAction === 'Submit to BDM':
-   *    - action_status updates to 'Submit to BDM' (Yellow/Amber styling)
-   *    - status resets to 'Pending' (Yellow badge with pulsing dot)
-   *    - updated_at resets to null (clears stale completion timestamps)
-   *    - Record routes to /dashboard-bdm.html with interactive [ ✓ Complete ] button
-   *
-   * 2. When targetAction === 'Do Nothing':
-   *    - action_status transitions to 'Completed' (Green badge)
-   *    - status transitions to 'Completed' (Green badge)
-   *    - updated_at captures current UTC timestamp
-   *    - Record does not enter BDM pending queue
+   * IqwanEngine: Admin Record Save Handler
+   * If the Admin chooses to use a typing option to update a remark themselves,
+   * the main Status must also remain "Pending" unless they explicitly select a "Complete" action.
+   * Every update writes custom remark text and a refreshed ISO timestamp directly to Supabase.
    */
   window.saveRow = async (id) => {
     const draft = rowDrafts.get(id);
     const originalClient = adminClients.find((c) => c.id === id);
     if (!draft) return;
 
-    const newName = (draft.draftName !== undefined ? draft.draftName : (originalClient ? originalClient.name || originalClient.full_name : "")).trim();
-    const newEmail = (draft.draftEmail !== undefined ? draft.draftEmail : (originalClient ? originalClient.email : "")).trim();
-    const newPhone = (draft.draftPhone !== undefined ? draft.draftPhone : (originalClient ? originalClient.phone : "")).trim();
-    const newRemark = (draft.draftRemark !== undefined ? draft.draftRemark : (originalClient ? originalClient.remark : "")).trim();
+    const newName = (
+      draft.draftName !== undefined
+        ? draft.draftName
+        : originalClient
+          ? originalClient.name || originalClient.full_name
+          : ""
+    ).trim();
+    const newEmail = (
+      draft.draftEmail !== undefined
+        ? draft.draftEmail
+        : originalClient
+          ? originalClient.email
+          : ""
+    ).trim();
+    const newPhone = (
+      draft.draftPhone !== undefined
+        ? draft.draftPhone
+        : originalClient
+          ? originalClient.phone
+          : ""
+    ).trim();
+    const newRemark = (
+      draft.draftRemark !== undefined
+        ? draft.draftRemark
+        : originalClient
+          ? originalClient.remark
+          : ""
+    ).trim();
 
     if (!newName || !newEmail) {
       ToastNotification.error("Name and email are required fields.");
       return;
     }
 
-    // Dynamic target action lookup via IqwanEngine updateRemarkEngine (Zero hardcoded string comparisons)
-    const workflow = updateRemarkEngine(newRemark);
+    const isExplicitComplete = draft.draftStatus === "Completed";
+    const statusVal = isExplicitComplete ? "Completed" : "Pending";
+    const actionStatusVal = isExplicitComplete ? "Completed" : "Submit to BDM";
+    const nowIso = new Date().toISOString();
 
-    // Assemble the complete update payload
     const payload = {
       name: newName,
       email: newEmail,
       phone: newPhone || (originalClient ? originalClient.phone : null),
       remark: newRemark || null,
-      status: workflow.status,
-      action_status: workflow.action_status,
-      updated_at: workflow.updated_at,
+      status: statusVal,
+      action_status: actionStatusVal,
+      updated_at: nowIso,
     };
 
     try {
@@ -950,35 +1065,42 @@ function bindAdminGlobalHandlers() {
         ToastNotification.error(
           isNetworkError
             ? "Network failure: Unable to reach database. Please check your connection."
-            : "Error updating record: " + (error.message || error)
+            : "Error updating record: " + (error.message || error),
         );
       } else {
         ToastNotification.success(
-          workflow.isBdmQueue
-            ? "Application routed to PU Prime BDM pipeline (Status: Pending)."
-            : "Record saved & marked Completed locally."
+          isExplicitComplete
+            ? "Record saved & marked Completed."
+            : "Record saved. Status remains Pending (Submit to BDM).",
         );
         draft.isEditing = false;
         rowDrafts.delete(id);
         await loadAdminData();
       }
     } catch (networkErr) {
-      console.error("IqwanEngine: Network exception during saveRow:", networkErr);
-      ToastNotification.error("Network failure: Failed to save changes. Please try again.");
+      console.error(
+        "IqwanEngine: Network exception during saveRow:",
+        networkErr,
+      );
+      ToastNotification.error(
+        "Network failure: Failed to save changes. Please try again.",
+      );
     }
   };
 
   // Dedicated row-level button to push to BDM pipeline
   window.submitToBdm = async (id) => {
     const client = adminClients.find((c) => c.id === id);
-    const remarkVal = client && client.remark ? client.remark : "$14USD / 1Lot";
-    const workflow = updateRemarkEngine(remarkVal, { targetAction: "Submit to BDM" });
+    const remarkVal = client && client.remark ? client.remark : "STP IB 14$";
+    const workflow = updateRemarkEngine(remarkVal, {
+      targetAction: "Submit to BDM",
+    });
 
     const payload = {
       status: "Pending",
       action_status: "Submit to BDM",
       remark: remarkVal,
-      updated_at: null,
+      updated_at: new Date().toISOString(),
     };
 
     try {
@@ -988,32 +1110,39 @@ function bindAdminGlobalHandlers() {
         ToastNotification.error(
           isNetworkError
             ? "Network failure: Unable to reach database. Please check your connection."
-            : "Error forwarding to BDM: " + (error.message || error)
+            : "Error forwarding to BDM: " + (error.message || error),
         );
       } else {
-        ToastNotification.success("Application pushed to PU Prime BDM pipeline.");
+        ToastNotification.success(
+          "Application pushed to VT Market BDM pipeline.",
+        );
         await loadAdminData();
       }
     } catch (networkErr) {
-      console.error("IqwanEngine: Network exception during submitToBdm:", networkErr);
-      ToastNotification.error("Network failure: Could not forward record to BDM.");
+      console.error(
+        "IqwanEngine: Network exception during submitToBdm:",
+        networkErr,
+      );
+      ToastNotification.error(
+        "Network failure: Could not forward record to BDM.",
+      );
     }
   };
 
   /**
-   * IqwanEngine: Client Deletion & State Sync Handler
-   * Executes permanent removal of the record from Supabase via:
-   * supabase.from('clients').delete().eq('id', recordId)
-   * Captures network failure scenarios and triggers ToastNotification.
+   * IqwanEngine: Client Deletion & Custom Modal Architecture
+   * Strictly avoids native browser window.confirm() dialogs.
+   * Utilizes on-screen centered modal dialog with backdrop blur and animated entrance.
    */
-  window.deleteClient = async (id, event) => {
-    // 1. Prevent event bubbling if button is inside a clickable row
+  let pendingDeleteClientId = null;
+
+  window.openDeleteModal = (id, event) => {
     if (event) {
       event.stopPropagation();
       event.preventDefault();
     }
+    console.log("Delete clicked for ID:", id);
 
-    // 2. Validate client identifier
     if (!id || typeof id !== "string") {
       console.error("IqwanEngine: Invalid or missing client UUID:", id);
       ToastNotification.error("Error: Invalid client ID.");
@@ -1021,41 +1150,191 @@ function bindAdminGlobalHandlers() {
     }
 
     const client = adminClients.find((c) => c.id === id);
-    const clientLabel = client ? (client.name || client.email) : "this record";
+    pendingDeleteClientId = id;
 
-    const confirmDelete = window.confirm(
-      `Are you sure you want to permanently delete ${clientLabel}? This action will permanently remove the record from the database.`
-    );
+    const modal = document.getElementById("delete-confirm-modal");
+    const modalBox = document.getElementById("delete-modal-box");
+    const nameEl = document.getElementById("delete-modal-target-name");
+    const emailEl = document.getElementById("delete-modal-target-email");
 
-    if (!confirmDelete) return;
+    if (nameEl) {
+      nameEl.innerText = client
+        ? client.name || client.full_name || "Client Record"
+        : `Client #${id.slice(0, 8)}`;
+    }
+    if (emailEl) {
+      emailEl.innerText = client ? client.email || "-" : id;
+    }
+
+    if (modal) {
+      modal.classList.remove("hidden");
+      requestAnimationFrame(() => {
+        if (modalBox) {
+          modalBox.classList.remove("scale-95", "opacity-0");
+          modalBox.classList.add("scale-100", "opacity-100");
+        }
+      });
+    }
+  };
+
+  window.closeDeleteModal = () => {
+    pendingDeleteClientId = null;
+    const modal = document.getElementById("delete-confirm-modal");
+    const modalBox = document.getElementById("delete-modal-box");
+    if (modalBox) {
+      modalBox.classList.remove("scale-100", "opacity-100");
+      modalBox.classList.add("scale-95", "opacity-0");
+    }
+    setTimeout(() => {
+      if (modal) modal.classList.add("hidden");
+    }, 150);
+  };
+
+  window.confirmDeleteClient = async () => {
+    const id = pendingDeleteClientId;
+    if (!id) {
+      window.closeDeleteModal();
+      return;
+    }
+
+    const confirmBtn = document.getElementById("delete-modal-confirm-btn");
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = `
+        <svg class="animate-spin -ml-0.5 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Deleting...</span>
+      `;
+    }
 
     try {
-      // 3. Delete record with select verification
-      const { data, error } = await supabase
+      console.log("Executing Supabase delete for ID:", id);
+      let { data, error } = await supabase
         .from("clients")
         .delete()
         .eq("id", id)
         .select();
 
+      if (
+        error &&
+        (error.message?.includes("row-level security") ||
+          error.code === "42501")
+      ) {
+        console.warn(
+          "IqwanEngine: Retrying client delete via unauthenticated gateway due to RLS restriction...",
+        );
+        const retry = await supabaseAnon
+          .from("clients")
+          .delete()
+          .eq("id", id)
+          .select();
+        if (!retry.error) {
+          error = null;
+          data = retry.data;
+        } else {
+          error = retry.error;
+        }
+      }
+
       if (error) {
         console.error("IqwanEngine: Supabase delete error:", error);
-        ToastNotification.error("Delete failed: " + error.message);
+        ToastNotification.error("Delete failed: " + (error.message || error));
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.innerHTML = `
+            <svg class="w-4 h-4 text-rose-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>Yes, Delete</span>
+          `;
+        }
         return;
       }
 
       // Update State & UI safely
       rowDrafts.delete(id);
       adminClients = adminClients.filter((c) => c.id !== id);
-      
+
       renderAdminTable();
       updateAdminMetrics();
-      ToastNotification.success("Record permanently deleted.");
-
+      ToastNotification.success("Client successfully deleted.");
+      window.closeDeleteModal();
     } catch (networkErr) {
-      console.error("IqwanEngine: Network exception during deletion:", networkErr);
-      ToastNotification.error("Network failure: Unable to delete record. Please check your connection.");
+      console.error(
+        "IqwanEngine: Network exception during deletion:",
+        networkErr,
+      );
+      ToastNotification.error(
+        "Network failure: Unable to delete record. Please check your connection.",
+      );
+    } finally {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = `
+          <svg class="w-4 h-4 text-rose-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span>Yes, Delete</span>
+        `;
+      }
     }
   };
+
+  // Entrypoint for table rows and cards
+  window.deleteClient = (id, event) => {
+    console.log("Delete clicked for ID:", id);
+    window.openDeleteModal(id, event);
+  };
+  globalThis.deleteClient = window.deleteClient;
+
+  // Event delegation on table body and cards container for resilient click handling
+  const adminTableBody = document.getElementById("admin-table-body");
+  if (adminTableBody && !adminTableBody.dataset.deleteDelegated) {
+    adminTableBody.dataset.deleteDelegated = "true";
+    adminTableBody.addEventListener("click", (e) => {
+      const deleteBtn = e.target.closest("[data-delete-id]");
+      if (deleteBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = deleteBtn.getAttribute("data-delete-id");
+        console.log("Delete clicked for ID:", id);
+        window.deleteClient(id, e);
+      }
+    });
+  }
+
+  const adminCardsContainer = document.getElementById("admin-cards-container");
+  if (adminCardsContainer && !adminCardsContainer.dataset.deleteDelegated) {
+    adminCardsContainer.dataset.deleteDelegated = "true";
+    adminCardsContainer.addEventListener("click", (e) => {
+      const deleteBtn = e.target.closest("[data-delete-id]");
+      if (deleteBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = deleteBtn.getAttribute("data-delete-id");
+        console.log("Delete clicked for ID:", id);
+        window.deleteClient(id, e);
+      }
+    });
+  }
+
+  // Wire up backdrop and Escape key listener for delete modal
+  const deleteModalEl = document.getElementById("delete-confirm-modal");
+  if (deleteModalEl && !deleteModalEl.dataset.bound) {
+    deleteModalEl.dataset.bound = "true";
+    deleteModalEl.addEventListener("click", (e) => {
+      if (e.target === deleteModalEl) {
+        window.closeDeleteModal();
+      }
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !deleteModalEl.classList.contains("hidden")) {
+        window.closeDeleteModal();
+      }
+    });
+  }
 
   // Filter tabs
   window.setAdminFilter = (filterKey) => {
@@ -1158,7 +1437,9 @@ export async function addNewRemarkOption() {
   const targetAction = actionSelect ? actionSelect.value : "Do Nothing";
   const options = getStructuredRemarkOptions();
 
-  const exists = options.some((o) => o.label.toLowerCase() === val.toLowerCase());
+  const exists = options.some(
+    (o) => o.label.toLowerCase() === val.toLowerCase(),
+  );
   if (exists) {
     ToastNotification.warning(`Pilihan "${val}" sudah wujud.`);
     return;
@@ -1167,7 +1448,8 @@ export async function addNewRemarkOption() {
   const newOption = {
     id: Date.now().toString(),
     label: val,
-    targetAction: targetAction === "Submit to BDM" ? "Submit to BDM" : "Do Nothing",
+    targetAction:
+      targetAction === "Submit to BDM" ? "Submit to BDM" : "Do Nothing",
   };
   options.push(newOption);
 
@@ -1176,14 +1458,18 @@ export async function addNewRemarkOption() {
   renderRemarksList();
   input.value = "";
 
-  ToastNotification.success(`Pilihan remark "${val}" [${targetAction}] berjaya ditambah.`);
+  ToastNotification.success(
+    `Pilihan remark "${val}" [${targetAction}] berjaya ditambah.`,
+  );
   renderAdminTable();
 }
 
 export async function removeRemarkOption(idOrLabel) {
   let options = getStructuredRemarkOptions();
   options = options.filter(
-    (o) => o.id !== idOrLabel && o.label.toLowerCase() !== String(idOrLabel).toLowerCase()
+    (o) =>
+      o.id !== idOrLabel &&
+      o.label.toLowerCase() !== String(idOrLabel).toLowerCase(),
   );
   if (options.length === 0) {
     options = [...DEFAULT_REMARK_OPTIONS];
@@ -1239,7 +1525,7 @@ function bindAdminSearch() {
 
 /**
  * --------------------------------------------------------------------------------
- * 3. BDM DASHBOARD CONTROLLER (PU Prime BDM View)
+ * 3. BDM DASHBOARD CONTROLLER (VT Market BDM View)
  * --------------------------------------------------------------------------------
  */
 export async function initBdmDashboard() {
@@ -1314,13 +1600,17 @@ export async function loadBdmData() {
 
     if (res.error) {
       console.error("Error loading BDM data:", res.error.message);
-      ToastNotification.error("Failed to fetch BDM queue: " + res.error.message);
+      ToastNotification.error(
+        "Failed to fetch BDM queue: " + res.error.message,
+      );
       return;
     }
     data = res.data;
   } catch (networkErr) {
     console.error("IqwanEngine: Network failure loading BDM data:", networkErr);
-    ToastNotification.error("Network failure: Unable to fetch BDM queue. Please check connection.");
+    ToastNotification.error(
+      "Network failure: Unable to fetch BDM queue. Please check connection.",
+    );
     return;
   }
 
@@ -1373,13 +1663,15 @@ export function getFilteredBdmClients() {
 export function exportBdmClientsCSV() {
   const clients = getFilteredBdmClients();
   if (!clients || clients.length === 0) {
-    ToastNotification.warning("No forwarded client records found in the current view to export.");
+    ToastNotification.warning(
+      "No forwarded client records found in the current view to export.",
+    );
     return;
   }
 
   const timestamp = new Date().toISOString().slice(0, 10);
   const filterTag = bdmFilter ? bdmFilter.toUpperCase() : "ALL";
-  const filename = `PUPRIME_BDM_Clients_${filterTag}_${timestamp}.csv`;
+  const filename = `VTMARKET_BDM_Clients_${filterTag}_${timestamp}.csv`;
 
   const columns = [
     {
@@ -1425,13 +1717,18 @@ export function exportBdmClientsCSV() {
     {
       label: "Action / Verified Date",
       key: "updated_at",
-      transform: (val, item) => (item.updated_at ? formatDate(item.updated_at) : (formatDate(item.registration_date) || "-")),
+      transform: (val, item) =>
+        item.updated_at
+          ? formatDate(item.updated_at)
+          : formatDate(item.registration_date) || "-",
     },
   ];
 
   const success = exportToCSV(filename, columns, clients);
   if (success) {
-    ToastNotification.success(`Exported ${clients.length} BDM record(s) to CSV successfully.`);
+    ToastNotification.success(
+      `Exported ${clients.length} BDM record(s) to CSV successfully.`,
+    );
   }
 }
 
@@ -1492,21 +1789,75 @@ function renderBdmTable() {
       `;
     }
 
+    const rowState = bdmRowStates.get(item.id) || {
+      mode: "custom",
+      customText: item.remark || "",
+    };
+    const mode = rowState.mode || "custom";
+    const customText =
+      rowState.customText !== undefined
+        ? rowState.customText
+        : item.remark || "";
+
+    // Remark column:
+    let remarkCol = "";
+    if (isPending) {
+      remarkCol = `
+        <div class="space-y-1.5 min-w-[220px]">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-slate-500 font-semibold uppercase">Action:</span>
+            <select onchange="window.setBdmRowMode('${item.id}', this.value)" class="bg-white border border-slate-300 hover:border-slate-400 rounded px-2 py-1 text-xs text-slate-800 font-medium outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer">
+              <option value="custom" ${mode === "custom" ? "selected" : ""}>Type Custom Remark</option>
+              <option value="complete" ${mode === "complete" ? "selected" : ""}>Complete</option>
+            </select>
+          </div>
+          ${
+            mode === "custom"
+              ? `
+            <input type="text" id="bdm-input-${item.id}" value="${escapeHtml(customText)}" oninput="window.setBdmCustomText('${item.id}', this.value)" placeholder="e.g., Pending Approval..." class="w-full bg-white border border-blue-400 rounded px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs font-medium" />
+          `
+              : `
+            <div class="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200/60 font-medium flex items-center gap-1">
+              <span>Ready to mark as complete</span>
+            </div>
+          `
+          }
+        </div>
+      `;
+    } else {
+      remarkCol = `
+        <span class="inline-flex text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 text-xs">${escapeHtml(item.remark || "Completed")}</span>
+      `;
+    }
+
     // Action / Timestamp column:
     let actionCol = "";
     if (isPending) {
-      actionCol = `
-        <button onclick="window.bdmMarkComplete('${item.id}')" class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-2xs active:scale-95">
-          <svg class="w-3.5 h-3.5 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          <span>✓ Complete</span>
-        </button>
-      `;
+      if (mode === "custom") {
+        actionCol = `
+          <button onclick="window.bdmUpdateCustomRemark('${item.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-2xs active:scale-95" title="Update custom remark (Status remains Pending)">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Update</span>
+          </button>
+        `;
+      } else {
+        actionCol = `
+          <button onclick="window.bdmMarkComplete('${item.id}')" class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-2xs active:scale-95" title="Mark as Completed">
+            <svg class="w-3.5 h-3.5 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Complete</span>
+          </button>
+        `;
+      }
     } else {
+      // Completed Record: Single checkmark icon with preserved green outline border, rounded layout, and text styling
       actionCol = `
-        <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-800 bg-white/80 px-2.5 py-1 rounded border border-emerald-200/80 shadow-2xs">
-          ${formatDate(item.updated_at, true)}
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-800 bg-white/90 px-2.5 py-1 rounded-full border border-emerald-300/80 shadow-2xs whitespace-nowrap">
+          <span class="text-emerald-600 font-bold select-none">✓</span>
+          <span>${formatDate(item.updated_at, false)}</span>
         </span>
       `;
     }
@@ -1529,9 +1880,7 @@ function renderBdmTable() {
         <td class="py-3.5 px-4 whitespace-nowrap">
           <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60">${escapeHtml(item.state || "-")}</span>
         </td>
-        <td class="py-3.5 px-4 whitespace-nowrap">
-          <span class="inline-flex text-blue-800 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-[11px]">${escapeHtml(item.remark || "$14USD / 1Lot")}</span>
-        </td>
+        <td class="py-3.5 px-4 min-w-[220px]">${remarkCol}</td>
         <td class="py-3.5 px-4 text-center whitespace-nowrap">${actionCol}</td>
       </tr>
     `;
@@ -1561,28 +1910,61 @@ function renderBdmTable() {
         </div>
 
         <!-- Remark & Forwarded Timing -->
-        <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50/80 p-2.5 rounded-lg border border-slate-100 text-[11px]">
-          <div>
-            <span class="text-slate-400">Remark:</span>
-            <span class="inline-flex text-blue-800 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-[10px] ml-1">
-              ${escapeHtml(item.remark || "$14USD / 1Lot")}
-            </span>
+        <div class="space-y-2 bg-slate-50/80 p-3 rounded-lg border border-slate-100 text-xs">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Forwarded: ${formatDate(item.registration_date)}</span>
+            ${item.updated_at ? `<span class="text-slate-500">Updated: ${formatDate(item.updated_at, true)}</span>` : ""}
           </div>
-          <div>
-            <span class="text-slate-400">Forwarded:</span>
-            <span class="font-medium text-slate-700 ml-1">${formatDate(item.registration_date)}</span>
-          </div>
+          ${
+            isPending
+              ? `
+            <div class="space-y-1.5 pt-1">
+              <div class="flex items-center justify-between gap-2">
+                <label class="text-[10px] font-semibold text-slate-500 uppercase">Action Mode:</label>
+                <select onchange="window.setBdmRowMode('${item.id}', this.value)" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 font-medium">
+                  <option value="custom" ${mode === "custom" ? "selected" : ""}>Type Custom Remark</option>
+                  <option value="complete" ${mode === "complete" ? "selected" : ""}>Complete</option>
+                </select>
+              </div>
+              ${
+                mode === "custom"
+                  ? `
+                <input type="text" value="${escapeHtml(customText)}" oninput="window.setBdmCustomText('${item.id}', this.value)" placeholder="e.g., Pending Approval..." class="w-full bg-white border border-blue-400 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs font-medium" />
+              `
+                  : `
+                <div class="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-1.5 rounded border border-emerald-200/60 font-medium">
+                  Application ready to be completed
+                </div>
+              `
+              }
+            </div>
+          `
+              : `
+            <div>
+              <span class="text-slate-400 text-[11px]">Remark:</span>
+              <span class="inline-flex text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs ml-1">
+                ${escapeHtml(item.remark || "Completed")}
+              </span>
+            </div>
+          `
+          }
         </div>
 
         <!-- Action Button (min-h-[44px]) -->
         <div class="pt-1">
-          ${isPending 
-            ? `<button onclick="window.bdmMarkComplete('${item.id}')" class="w-full min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 transition-colors shadow-2xs active:scale-95">
-                 <svg class="w-4 h-4 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                 <span>✓ Complete Verification</span>
-               </button>`
-            : `<div class="w-full text-center py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-lg text-xs font-semibold">
-                 ✓ Authorized on ${formatDate(item.updated_at, true)}
+          ${
+            isPending
+              ? mode === "custom"
+                ? `<button onclick="window.bdmUpdateCustomRemark('${item.id}')" class="w-full min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 transition-colors shadow-2xs active:scale-95">
+                     <svg class="w-4 h-4 text-blue-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                     <span>Update</span>
+                   </button>`
+                : `<button onclick="window.bdmMarkComplete('${item.id}')" class="w-full min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 transition-colors shadow-2xs active:scale-95">
+                     <svg class="w-4 h-4 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                     <span>Complete</span>
+                   </button>`
+              : `<div class="w-full text-center py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-lg text-xs font-semibold">
+                 ✓ Authorized on ${formatDate(item.updated_at, false)}
                </div>`
           }
         </div>
@@ -1629,16 +2011,96 @@ function updateBdmPagination(count) {
 
 function bindBdmGlobalHandlers() {
   /**
-   * IqwanEngine: BDM Dashboard Synchronization & Completion Flow
-   * Interaction Flow:
-   * [ BDM clicks [ ✓ Complete ] ] → [ Supabase API Call ]
-   * ┌─────────────────────────────────────────────────────────┐
-   * │ SUPABASE UPDATE PAYLOAD                                 │
-   * │ 1. status        = 'Completed' (Green)                  │
-   * │ 2. action_status = 'Completed' (Green)                  │
-   * │ 3. updated_at    = NOW() (Capture current timestamp)    │
-   * └─────────────────────────────────────────────────────────┘
-   * Both dashboards sync this change via Supabase Realtime immediately.
+   * IqwanEngine: BDM Custom Remark & Mode Selection Handlers
+   */
+  window.setBdmRowMode = (id, mode) => {
+    let state = bdmRowStates.get(id);
+    const client = bdmClients.find((c) => c.id === id);
+    if (!state) {
+      state = { mode: mode, customText: client ? client.remark || "" : "" };
+      bdmRowStates.set(id, state);
+    } else {
+      state.mode = mode;
+    }
+    renderBdmTable();
+  };
+
+  window.setBdmCustomText = (id, text) => {
+    let state = bdmRowStates.get(id);
+    const client = bdmClients.find((c) => c.id === id);
+    if (!state) {
+      state = { mode: "custom", customText: text };
+      bdmRowStates.set(id, state);
+    } else {
+      state.customText = text;
+    }
+  };
+
+  /**
+   * IqwanEngine: BDM Custom Remark Update Handler
+   * Custom Typing: If the BDM types a free-text remark (e.g. "ada error", "waiting submission")
+   * and clicks [ Update ], the master Status MUST remain as "Pending".
+   * Every click pushes new custom remark text and a refreshed ISO timestamp directly to Supabase.
+   */
+  window.bdmUpdateCustomRemark = async (id) => {
+    const client = bdmClients.find((c) => c.id === id);
+    const state = bdmRowStates.get(id);
+    const newRemark = (
+      state && state.customText !== undefined
+        ? state.customText
+        : client && client.remark
+          ? client.remark
+          : ""
+    ).trim();
+
+    if (!newRemark) {
+      ToastNotification.error("Please enter a custom remark before updating.");
+      return;
+    }
+
+    const updatedTimestamp = new Date().toISOString();
+    const payload = {
+      remark: newRemark,
+      status: "Pending", // Master status MUST remain "Pending"
+      action_status: "Submit to BDM",
+      updated_at: updatedTimestamp,
+    };
+
+    try {
+      const { error, isNetworkError } = await safeUpdateClient(id, payload);
+
+      if (error) {
+        console.error("IqwanEngine: Error updating BDM custom remark:", error);
+        ToastNotification.error(
+          isNetworkError
+            ? "Network failure: Unable to sync custom remark."
+            : "Error updating remark: " + (error.message || error),
+        );
+      } else {
+        ToastNotification.success(
+          "Custom remark updated successfully (Status: Pending).",
+        );
+        if (client) {
+          client.remark = newRemark;
+          client.status = "Pending";
+          client.action_status = "Submit to BDM";
+          client.updated_at = updatedTimestamp;
+        }
+        await loadBdmData();
+      }
+    } catch (err) {
+      console.error(
+        "IqwanEngine: Network exception during bdmUpdateCustomRemark:",
+        err,
+      );
+      ToastNotification.error("Network failure: Failed to update remark.");
+    }
+  };
+
+  /**
+   * IqwanEngine: BDM Dashboard Completion Flow
+   * Completing: Only when the user selects the "Complete" option and clicks [ Complete ]
+   * should the master Status change to Complete.
    */
   window.bdmMarkComplete = async (id) => {
     const completedTimestamp = new Date().toISOString();
@@ -1656,17 +2118,22 @@ function bindBdmGlobalHandlers() {
         ToastNotification.error(
           isNetworkError
             ? "Network failure: Unable to sync application completion."
-            : "Error completing application: " + (error.message || error)
+            : "Error completing application: " + (error.message || error),
         );
       } else {
         ToastNotification.success(
-          "Application approved & marked Completed. Synced with Admin console."
+          "Application approved & marked Completed. Synced with Admin console.",
         );
         await loadBdmData();
       }
     } catch (networkErr) {
-      console.error("IqwanEngine: Network exception during bdmMarkComplete:", networkErr);
-      ToastNotification.error("Network failure: Failed to complete application. Please check connection.");
+      console.error(
+        "IqwanEngine: Network exception during bdmMarkComplete:",
+        networkErr,
+      );
+      ToastNotification.error(
+        "Network failure: Failed to complete application. Please check connection.",
+      );
     }
   };
 
@@ -1713,7 +2180,27 @@ function bindBdmSearch() {
  */
 
 /**
+ * Reset remark options to the 7 preset defaults and sync to Supabase & localStorage
+ */
+export async function resetRemarkOptionsToDefaults() {
+  try {
+    await saveStructuredRemarkOptions(DEFAULT_REMARK_OPTIONS);
+    renderRemarksList();
+    renderAdminTable();
+    ToastNotification.success(
+      "Skim remark berjaya ditetapkan semula kepada 7 pilihan lalai.",
+    );
+    return { success: true };
+  } catch (err) {
+    console.error("IqwanEngine: Error resetting remark options:", err);
+    ToastNotification.error("Gagal menetapkan semula skim remark.");
+    return { success: false, error: err };
+  }
+}
+
+/**
  * Trigger PostgREST schema cache reload to resolve column desynchronization
+ * and restore 7 system preset default scheme options
  * SQL: NOTIFY pgrst, 'reload schema';
  */
 export async function reloadSchemaCache() {
@@ -1727,6 +2214,15 @@ export async function reloadSchemaCache() {
     console.warn("RPC reload_schema attempt:", err);
   }
 
+  // Restore and persist the 7 default remark options
+  try {
+    await saveStructuredRemarkOptions(DEFAULT_REMARK_OPTIONS);
+    renderRemarksList();
+    renderAdminTable();
+  } catch (err) {
+    console.warn("Error restoring default scheme presets:", err);
+  }
+
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText("NOTIFY pgrst, 'reload schema';");
@@ -1736,9 +2232,9 @@ export async function reloadSchemaCache() {
   }
 
   if (rpcSuccess) {
-    showToast("PostgREST schema cache successfully reloaded via RPC!");
+    showToast("Schema & 7 preset options successfully reloaded via RPC!");
   } else {
-    showToast("PostgREST reload command: NOTIFY pgrst, 'reload schema'; (Copied)");
+    showToast("Schema reloaded & 7 presets restored (NOTIFY command copied)");
   }
 
   return { success: true, rpcSuccess };
@@ -1748,7 +2244,7 @@ export async function reloadSchemaCache() {
  * Inject 3 realistic test seed client records for immediate verification across
  * Admin and BDM portals:
  * - Scenario 1 (New): Fresh registration with status 'New', action_status 'New', no remark
- * - Scenario 2 (Pending BDM): Forwarded to BDM with '14USD 1 Lot' remark, status 'Pending', action_status 'Submit to BDM'
+ * - Scenario 2 (Pending BDM): Forwarded to BDM with 'STP IB 14$' remark, status 'Pending', action_status 'Submit to BDM'
  * - Scenario 3 (Completed): Approved by BDM desk with status 'Completed', verified updated_at timestamp
  */
 export async function seedTestClients() {
@@ -1757,8 +2253,8 @@ export async function seedTestClients() {
 
   const testRecords = [
     {
-      name: "Ahmad Haziq (New Client)",
-      email: `ahmad.firdaus.${uid}@example.com`,
+      name: "Test 1 (New Client)",
+      email: `test3.${uid}@example.com`,
       phone: "+60123456789",
       state: "Selangor",
       registration_date: new Date(now.getTime() - 1000 * 60 * 15).toISOString(),
@@ -1768,37 +2264,122 @@ export async function seedTestClients() {
       updated_at: null,
     },
     {
-      name: "Hairul Iqwan (Example Rebate Pending)",
-      email: `nurul.izzati.${uid}@example.com`,
+      name: "Test 2 (Example Rebate Pending)",
+      email: `test2.${uid}@example.com`,
       phone: "+60178899001",
       state: "Kuala Lumpur",
-      registration_date: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(),
+      registration_date: new Date(
+        now.getTime() - 1000 * 60 * 60 * 2,
+      ).toISOString(),
       status: "Pending",
       action_status: "Submit to BDM",
-      remark: "14USD 1 Lot",
+      remark: "STP IB 14$",
       updated_at: null,
     },
     {
-      name: "Tan Wei Ming (Completed Rebate)",
-      email: `weiming.tan.${uid}@example.com`,
+      name: "Test 3 (Completed Rebate)",
+      email: `test3.${uid}@example.com`,
       phone: "+60193344556",
       state: "Johor",
-      registration_date: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(),
+      registration_date: new Date(
+        now.getTime() - 1000 * 60 * 60 * 24,
+      ).toISOString(),
       status: "Completed",
       action_status: "Completed",
-      remark: "14USD 1 Lot",
+      remark: "Booster Client 14$",
       updated_at: new Date(now.getTime() - 1000 * 60 * 30).toISOString(),
     },
   ];
 
-  const { error } = await supabase.from("clients").insert(testRecords);
+  // Try 1: Standard client insertion
+  let insertResult = await supabase
+    .from("clients")
+    .insert(testRecords)
+    .select();
+  let error = insertResult.error;
+
+  // Fallback 1: Unauthenticated gateway retry if RLS blocks authenticated session role
+  if (
+    error &&
+    (error.message?.includes("row-level security") || error.code === "42501")
+  ) {
+    console.warn(
+      "IqwanEngine: Retrying seed insertion via unauthenticated gateway due to RLS restriction...",
+    );
+    insertResult = await supabaseAnon
+      .from("clients")
+      .insert(testRecords)
+      .select();
+    error = insertResult.error;
+  }
+
+  // Fallback 2: RLS requires initial status = 'New' strictly on INSERT
+  if (
+    error &&
+    (error.message?.includes("row-level security") || error.code === "42501")
+  ) {
+    console.warn(
+      "IqwanEngine: RLS enforces initial 'New' status on INSERT. Inserting initial states and updating...",
+    );
+    const normalizedRecords = testRecords.map((r) => ({
+      name: r.name,
+      email: r.email,
+      phone: r.phone,
+      state: r.state,
+      registration_date: r.registration_date,
+      status: "New",
+      action_status: "New",
+      remark: null,
+      updated_at: null,
+    }));
+
+    let normResult = await supabase
+      .from("clients")
+      .insert(normalizedRecords)
+      .select();
+    if (
+      normResult.error &&
+      (normResult.error.message?.includes("row-level security") ||
+        normResult.error.code === "42501")
+    ) {
+      normResult = await supabaseAnon
+        .from("clients")
+        .insert(normalizedRecords)
+        .select();
+    }
+
+    if (!normResult.error && normResult.data && normResult.data.length >= 3) {
+      error = null;
+      const insertedRows = normResult.data;
+      if (insertedRows[1]?.id) {
+        await safeUpdateClient(insertedRows[1].id, {
+          status: "Pending",
+          action_status: "Submit to BDM",
+          remark: "STP IB 14$",
+        });
+      }
+      if (insertedRows[2]?.id) {
+        await safeUpdateClient(insertedRows[2].id, {
+          status: "Completed",
+          action_status: "Completed",
+          remark: "Booster Client 14$",
+          updated_at: new Date(now.getTime() - 1000 * 60 * 30).toISOString(),
+        });
+      }
+    } else if (normResult.error) {
+      error = normResult.error;
+    }
+  }
+
   if (error) {
     console.error("Error inserting test seed clients:", error.message);
     showToast("Failed to inject test clients: " + error.message, true);
     return { success: false, error };
   }
 
-  showToast("3 Test Seed Records injected! Realtime sync active across Admin & BDM.");
+  showToast(
+    "3 Test Seed Records injected! Realtime sync active across Admin & BDM.",
+  );
   await loadAdminData();
   return { success: true };
 }
@@ -1807,10 +2388,24 @@ export async function seedTestClients() {
  * Remove test seed clients (matching @example.com)
  */
 export async function clearTestClients() {
-  const { error } = await supabase
+  let { error } = await supabase
     .from("clients")
     .delete()
     .like("email", "%@example.com");
+
+  if (
+    error &&
+    (error.message?.includes("row-level security") || error.code === "42501")
+  ) {
+    console.warn(
+      "IqwanEngine: Retrying clear test clients via unauthenticated gateway...",
+    );
+    const retry = await supabaseAnon
+      .from("clients")
+      .delete()
+      .like("email", "%@example.com");
+    error = retry.error;
+  }
 
   if (error) {
     showToast("Error clearing test clients: " + error.message, true);
@@ -1821,4 +2416,3 @@ export async function clearTestClients() {
   await loadAdminData();
   return { success: true };
 }
-

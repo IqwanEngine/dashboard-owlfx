@@ -1,6 +1,6 @@
 /**
  * ================================================================================
- * IqwanEngine PU Prime Ecosystem
+ * IqwanEngine VT Market Ecosystem
  * Module: Centralized Toast Notification System (ui.js)
  * Architecture: Tailwind CSS Dynamic Feedback Controller
  * Crafted with precision by IqwanEngine
@@ -45,7 +45,8 @@ export class ToastNotification {
     this.syncLegacyToast(message, type, duration);
 
     const container = this.getOrCreateContainer();
-    const toastId = "toast-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+    const toastId =
+      "toast-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
 
     const toastEl = document.createElement("div");
     toastEl.id = toastId;
@@ -58,7 +59,8 @@ export class ToastNotification {
 
     switch (type) {
       case "error":
-        variantClasses = "bg-slate-900 text-rose-50 border-rose-500/80 shadow-rose-950/40";
+        variantClasses =
+          "bg-slate-900 text-rose-50 border-rose-500/80 shadow-rose-950/40";
         borderAccent = "border-l-4 border-l-rose-500";
         iconSvg = `
           <div class="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center shrink-0 text-rose-400">
@@ -70,7 +72,8 @@ export class ToastNotification {
         break;
 
       case "warning":
-        variantClasses = "bg-slate-900 text-amber-50 border-amber-500/80 shadow-amber-950/40";
+        variantClasses =
+          "bg-slate-900 text-amber-50 border-amber-500/80 shadow-amber-950/40";
         borderAccent = "border-l-4 border-l-amber-500";
         iconSvg = `
           <div class="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0 text-amber-400">
@@ -82,7 +85,8 @@ export class ToastNotification {
         break;
 
       case "info":
-        variantClasses = "bg-slate-900 text-blue-50 border-blue-500/80 shadow-blue-950/40";
+        variantClasses =
+          "bg-slate-900 text-blue-50 border-blue-500/80 shadow-blue-950/40";
         borderAccent = "border-l-4 border-l-blue-500";
         iconSvg = `
           <div class="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0 text-blue-400">
@@ -95,7 +99,8 @@ export class ToastNotification {
 
       case "success":
       default:
-        variantClasses = "bg-slate-900 text-emerald-50 border-emerald-500/70 shadow-emerald-950/40";
+        variantClasses =
+          "bg-slate-900 text-emerald-50 border-emerald-500/70 shadow-emerald-950/40";
         borderAccent = "border-l-4 border-l-emerald-500";
         iconSvg = `
           <div class="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0 text-emerald-400">

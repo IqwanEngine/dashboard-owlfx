@@ -1,6 +1,6 @@
 {
   "name": "IqwanEngine PU Prime Ecosystem",
-  "description": "Production-ready enterprise partner ecosystem and client management portal for OWLFX and PU Prime.",
+  "description": "Production-ready enterprise partner ecosystem and client management portal for OWLFX and VT Market.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

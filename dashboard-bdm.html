@@ -1,10 +1,8 @@
 <!--
 ================================================================================
-IqwanEngine PU Prime Ecosystem
-File: dashboard-bdm.html (Restricted Access - PU Prime BDM View)
+IqwanEngine VT Market Ecosystem
+File: dashboard-bdm.html (Restricted Access - VT Market BDM View)
 Crafted with precision by IqwanEngine
-Design Architecture: Vercel / Stripe / Apple Minimalist Financial Infrastructure
-Color Palette: Silver, White, Midnight Slate, Financial Blue
 ================================================================================
 -->
 <!doctype html>
@@ -12,10 +10,23 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PU Prime x OWLFX | BDM Partner Portal</title>
+
+        <!-- Favicon & Apple Touch Icon -->
+        <link
+            rel="icon"
+            type="image/png"
+            href="https://owlfx-register.vercel.app/assets/OWLFX.png"
+        />
+        <link
+            rel="apple-touch-icon"
+            href="https://owlfx-register.vercel.app/assets/OWLFX.png"
+        />
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>VT Market Dashboard | BDM Partner Portal</title>
         <meta
             name="description"
-            content="Restricted PU Prime Business Development Manager (BDM) clearinghouse portal for partner rebate authorization."
+            content="Restricted VT Market Business Development Manager (BDM) clearinghouse portal for partner rebate authorization."
         />
 
         <!-- Tailwind CSS CDN -->
@@ -63,6 +74,45 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                 font-feature-settings: "cv02", "cv03", "cv04", "cv11";
             }
         </style>
+
+        <!-- Strict Direct URL Route Guard & Anti-FOUC Protective Curtain -->
+        <style id="auth-curtain-style">
+            body {
+                display: none !important;
+            }
+        </style>
+        <script>
+            (function () {
+                try {
+                    var hasSbToken = false;
+                    for (var i = 0; i < localStorage.length; i++) {
+                        var k = localStorage.key(i);
+                        if (
+                            k &&
+                            k.startsWith("sb-") &&
+                            k.endsWith("-auth-token")
+                        ) {
+                            try {
+                                var val = JSON.parse(localStorage.getItem(k));
+                                if (val && (val.access_token || val.user)) {
+                                    hasSbToken = true;
+                                    break;
+                                }
+                            } catch (_) {}
+                        }
+                    }
+
+                    if (!hasSbToken) {
+                        window.location.replace(
+                            "index.html?error=unauthorized&redirect=" +
+                                encodeURIComponent(window.location.pathname),
+                        );
+                    }
+                } catch (e) {
+                    window.location.replace("index.html?error=unauthorized");
+                }
+            })();
+        </script>
     </head>
     <body
         class="min-h-full bg-slate-50/60 text-slate-900 font-sans antialiased flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900 overflow-x-hidden"
@@ -72,7 +122,9 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
             class="sticky top-0 z-40 w-full bg-white border-b border-slate-200/80 shadow-[0_1px_2px_0_rgba(15,23,42,0.03)]"
         >
             <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between min-h-16 py-2.5 sm:py-0 gap-3">
+                <div
+                    class="flex items-center justify-between min-h-16 py-2.5 sm:py-0 gap-3"
+                >
                     <!-- Left: Branding -->
                     <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                         <img
@@ -84,7 +136,7 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                             <div class="flex items-center gap-1.5 sm:gap-2">
                                 <span
                                     class="text-xs sm:text-base font-bold tracking-tight text-slate-900 truncate"
-                                    >PU Prime x OWLFX</span
+                                    >VT Market x OWLFX</span
                                 >
                                 <span
                                     class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-medium border border-amber-200/60 shrink-0"
@@ -92,8 +144,11 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                                     BDM Portal
                                 </span>
                             </div>
-                            <p class="hidden sm:block text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
-                                Restricted Partner Clearance & Rebate Authorization
+                            <p
+                                class="hidden sm:block text-[10px] sm:text-[11px] text-slate-500 font-medium truncate"
+                            >
+                                Restricted Partner Clearance & Rebate
+                                Authorization
                             </p>
                         </div>
                     </div>
@@ -166,15 +221,22 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                             >Pipeline</span
                         >
                     </div>
-                    <div class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2">
+                    <div
+                        class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2"
+                    >
                         <span
                             id="stat-bdm-total"
                             class="text-lg sm:text-2xl font-bold tracking-tight text-slate-900"
                             >0</span
                         >
-                        <span class="hidden sm:inline text-[11px] sm:text-xs text-slate-500">applications</span>
+                        <span
+                            class="hidden sm:inline text-[11px] sm:text-xs text-slate-500"
+                            >applications</span
+                        >
                     </div>
-                    <div class="hidden md:block mt-2 text-[11px] text-slate-400">
+                    <div
+                        class="hidden md:block mt-2 text-[11px] text-slate-400"
+                    >
                         Total Request From OWL-FX
                     </div>
                 </div>
@@ -192,15 +254,22 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                             >Authorized</span
                         >
                     </div>
-                    <div class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2">
+                    <div
+                        class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2"
+                    >
                         <span
                             id="stat-bdm-completed"
                             class="text-lg sm:text-2xl font-bold tracking-tight text-emerald-600"
                             >0</span
                         >
-                        <span class="hidden sm:inline text-[11px] sm:text-xs text-slate-500">processed</span>
+                        <span
+                            class="hidden sm:inline text-[11px] sm:text-xs text-slate-500"
+                            >processed</span
+                        >
                     </div>
-                    <div class="hidden md:block mt-2 text-[11px] text-slate-400">
+                    <div
+                        class="hidden md:block mt-2 text-[11px] text-slate-400"
+                    >
                         Cleared and verified by BDM desk
                     </div>
                 </div>
@@ -218,15 +287,22 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                             >Req</span
                         >
                     </div>
-                    <div class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2">
+                    <div
+                        class="mt-1 sm:mt-2.5 flex items-baseline gap-1.5 sm:gap-2"
+                    >
                         <span
                             id="stat-bdm-pending"
                             class="text-lg sm:text-2xl font-bold tracking-tight text-amber-600"
                             >0</span
                         >
-                        <span class="hidden sm:inline text-[11px] sm:text-xs text-slate-500">pending</span>
+                        <span
+                            class="hidden sm:inline text-[11px] sm:text-xs text-slate-500"
+                            >pending</span
+                        >
                     </div>
-                    <div class="hidden md:block mt-2 text-[11px] text-slate-400">
+                    <div
+                        class="hidden md:block mt-2 text-[11px] text-slate-400"
+                    >
                         Awaiting BDM completion
                     </div>
                 </div>
@@ -315,12 +391,25 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                     <button
                         type="button"
                         id="bdm-export-csv-btn"
-                        onclick="if(window.exportBdmClientsCSV) window.exportBdmClientsCSV();"
+                        onclick="
+                            if (window.exportBdmClientsCSV)
+                                window.exportBdmClientsCSV();
+                        "
                         title="Export current view to CSV (RFC 4180)"
                         class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 shadow-2xs hover:shadow-xs transition-all shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20 active:scale-95"
                     >
-                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        <svg
+                            class="w-3.5 h-3.5 text-emerald-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
                         </svg>
                         <span>Export CSV</span>
                     </button>
@@ -333,50 +422,52 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
             >
                 <!-- Desktop / Tablet Table View (hidden md:block) -->
                 <div class="hidden md:block w-full overflow-x-auto shadow-2xs">
-                    <table class="w-full text-left border-collapse min-w-[760px] text-xs">
+                    <table
+                        class="w-full text-left border-collapse min-w-[860px] text-xs"
+                    >
                         <thead>
                             <tr
                                 class="border-b border-slate-200 bg-slate-50/85 text-[11px] font-semibold text-slate-600 uppercase tracking-wider"
                             >
                                 <th
                                     scope="col"
-                                    class="py-3.5 px-4 font-semibold text-slate-700"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
                                 >
                                     Status
                                 </th>
                                 <th
                                     scope="col"
-                                    class="py-3.5 px-4 font-semibold text-slate-700"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
                                 >
                                     Full Name
                                 </th>
                                 <th
                                     scope="col"
-                                    class="py-3.5 px-4 font-semibold text-slate-700"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
                                 >
                                     Email Address
                                 </th>
                                 <th
                                     scope="col"
-                                    class="py-3.5 px-4 font-semibold text-slate-700"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
                                 >
                                     Phone (WhatsApp)
                                 </th>
                                 <th
                                     scope="col"
-                                    class="py-3.5 px-4 font-semibold text-slate-700"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap"
                                 >
                                     State
                                 </th>
                                 <th
                                     scope="col"
-                                    class="py-3.5 px-4 font-semibold text-slate-700"
+                                    class="py-3.5 px-4 font-semibold text-slate-700 min-w-[240px]"
                                 >
                                     Remark
                                 </th>
                                 <th
                                     scope="col"
-                                    class="py-3.5 px-4 text-center font-semibold text-slate-700"
+                                    class="py-3.5 px-4 text-center font-semibold text-slate-700 min-w-[140px]"
                                 >
                                     Action / Timestamp
                                 </th>
@@ -421,8 +512,8 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                         No pending BDM applications in queue.
                     </p>
                     <p class="text-[11px] text-slate-400 mt-1">
-                        Only records forwarded by Admin with remark 'Add Self Rebate'
-                        will appear here.
+                        Only records forwarded by Admin with remark 'Add Self
+                        Rebate' will appear here.
                     </p>
                 </div>
 
@@ -440,7 +531,7 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                         forwarded records
                     </div>
                     <div class="text-[11px] text-slate-400">
-                        Live sync with PU Prime clearinghouse
+                        Live sync with VT Market clearinghouse
                     </div>
                 </div>
             </div>
@@ -475,13 +566,22 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                 class="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3"
             >
                 <div class="flex items-center gap-3">
-                    <span class="font-semibold text-slate-800">&copy; 2026 OWLFX - Institutional Trading Ecosystem</span>
+                    <span class="font-semibold text-slate-800"
+                        >&copy; 2026 OWLFX - Institutional Trading
+                        Ecosystem</span
+                    >
                     <span class="text-slate-300">·</span>
-                    <span class="text-slate-500">PU Prime BDM Clearance Desk</span>
+                    <span class="text-slate-500"
+                        >VT Market BDM Clearance Desk</span
+                    >
                 </div>
                 <div class="flex items-center gap-4 text-slate-500">
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200/60 text-[11px]">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span
+                        class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200/60 text-[11px]"
+                    >
+                        <span
+                            class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"
+                        ></span>
                         Confidential Partner Clearance · 256-Bit SSL
                     </span>
                     <span class="text-slate-300">·</span>
@@ -509,9 +609,13 @@ Color Palette: Silver, White, Midnight Slate, Financial Blue
                 const waNum = getAdminWhatsApp();
                 if (waNum) {
                     const clean = waNum.replace(/[^0-9]/g, "");
-                    const message = encodeURIComponent("Hello OWLFX Admin, this is PU Prime BDM Desk regarding client verifications.");
-                    const bdmWaLink = document.getElementById("bdm-footer-wa-link");
-                    const bdmHeaderWaLink = document.getElementById("bdm-header-wa-link");
+                    const message = encodeURIComponent(
+                        "Hello OWLFX Admin, this is VT Market BDM Desk regarding client verifications.",
+                    );
+                    const bdmWaLink =
+                        document.getElementById("bdm-footer-wa-link");
+                    const bdmHeaderWaLink =
+                        document.getElementById("bdm-header-wa-link");
                     if (bdmWaLink) {
                         bdmWaLink.href = `https://wa.me/${clean}?text=${message}`;
                         bdmWaLink.innerText = `Direct Admin Hotline (${waNum})`;

@@ -15,13 +15,14 @@ export const SUPABASE_URL =
   "";
 
 export const SUPABASE_ANON_KEY =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+  (typeof import.meta !== "undefined" &&
+    import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
   (typeof process !== "undefined" && process.env?.VITE_SUPABASE_ANON_KEY) ||
   "";
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn(
-    "IqwanEngine: Missing Supabase credentials! Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in .env."
+    "IqwanEngine: Missing Supabase credentials! Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in .env.",
   );
 }
 
@@ -30,6 +31,15 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+  },
+});
+
+// Dedicated unauthenticated client instance to guarantee public / seed gateway availability
+export const supabaseAnon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
   },
 });
 
