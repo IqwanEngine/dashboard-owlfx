@@ -1180,8 +1180,8 @@ Crafted with precision by IqwanEngine
                                 </span>
                             </div>
                             <p class="text-xs text-slate-500 leading-relaxed">
-                                Nombor ini dipaparkan pada Dashboard BDM untuk
-                                rujukan terus urusan pendaftaran client.
+                                Nombor ini hanya ditunjukkan pada Dashboard BDM
+                                untuk rujukan terus urusan pendaftaran client.
                             </p>
                             <div class="flex items-center gap-2 pt-1">
                                 <div class="relative flex-1">
@@ -1214,7 +1214,7 @@ Crafted with precision by IqwanEngine
                                             d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                                         />
                                     </svg>
-                                    <span id="wa-edit-label">Ubah</span>
+                                    <span id="wa-edit-label">Edit</span>
                                 </button>
                             </div>
                         </section>
@@ -1240,7 +1240,7 @@ Crafted with precision by IqwanEngine
                             >
                                 <span class="text-base">📋</span>
                                 <h4>
-                                    Standard Operating Procedure (SOP) Aliran
+                                    Standard Operating Procedure (SOP) Proses
                                     Rekod OWLFX Ecosystem
                                 </h4>
                             </div>
@@ -1248,7 +1248,7 @@ Crafted with precision by IqwanEngine
                                 class="text-xs text-slate-600 mt-1.5 leading-relaxed"
                             >
                                 Panduan rasmi pengendalian rekod pendaftaran
-                                klien bermula dari portal pendaftaran sehingga
+                                klien bermula dari page pendaftaran sehingga
                                 pengesahan akhir (clearance) oleh pihak BDM.
                                 Sila patuhi turutan aliran kerja (workflow) ini
                                 untuk memastikan data sentiasa selaras dan tiada
@@ -1269,7 +1269,7 @@ Crafted with precision by IqwanEngine
                                 >
                                 <span
                                     >1. Pendaftaran Klien Baru (Client
-                                    Registration Portal)</span
+                                    Registration Page)</span
                                 >
                             </div>
                             <ul
@@ -1283,15 +1283,14 @@ Crafted with precision by IqwanEngine
                                     >
                                 </li>
                                 <li>
-                                    Klien melengkapkan pendaftaran akaun trading
-                                    dengan mengisi maklumat peribadi (Nama, No.
-                                    Telefon, Emel, No. Akaun Trading MT5, dan
-                                    broker yang dipilih).
+                                    Klien melengkapkan pendaftaran akaun dengan
+                                    mengisi maklumat peribadi (Nama, No.
+                                    Telefon, Emel, Negeri).
                                 </li>
                                 <li>
                                     Sebaik sahaja borang dihantar, data klien
                                     disimpan secara automatik ke dalam database
-                                    Supabase (<code
+                                    OWLFX (<code
                                         class="bg-slate-100 px-1 py-0.5 rounded text-[11px] font-mono"
                                         >clients</code
                                     >
@@ -1301,18 +1300,17 @@ Crafted with precision by IqwanEngine
                                     Rekod baharu akan terus muncul secara
                                     langsung (real-time) di
                                     <strong>Dashboard Admin</strong> dengan
-                                    status awal:
+                                    status baru:
                                     <div
                                         class="mt-1 flex flex-wrap gap-2 text-[11px]"
                                     >
                                         <span
                                             class="inline-flex items-center px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-medium"
-                                            >Status Master: Pending</span
+                                            >Status: Pending</span
                                         >
                                         <span
                                             class="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium"
-                                            >Action Status: New / Submit to
-                                            BDM</span
+                                            >Action Status: New</span
                                         >
                                     </div>
                                 </li>
@@ -1331,8 +1329,8 @@ Crafted with precision by IqwanEngine
                                     >2</span
                                 >
                                 <span
-                                    >2. Semakan &amp; Penetapan Skim di
-                                    Dashboard Admin</span
+                                    >2. Semakan &amp; Remark di Dashboard
+                                    Admin</span
                                 >
                             </div>
                             <ul
@@ -1340,12 +1338,12 @@ Crafted with precision by IqwanEngine
                             >
                                 <li>
                                     Admin log masuk ke
-                                    <strong>Dashboard Admin</strong> dan
-                                    menyemak rekod klien yang baru masuk.
+                                    <strong>Dashboard Admin</strong> dan check
+                                    rekod klien yang baru masuk.
                                 </li>
                                 <li>
-                                    Admin menetapkan skim rebat yang bersesuaian
-                                    melalui pilihan dropdown skim:
+                                    Admin boleh setkan rebate yang diinginkan
+                                    dari pilihan dropdown remark:
                                     <div
                                         class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5 text-[11px]"
                                     >
@@ -1354,7 +1352,7 @@ Crafted with precision by IqwanEngine
                                         >
                                             <span
                                                 class="font-semibold text-slate-700 block"
-                                                >Kategori STP:</span
+                                                >Kategori Standard:</span
                                             >
                                             <code
                                                 class="text-indigo-700 font-mono text-[10px]"
@@ -1408,20 +1406,21 @@ Crafted with precision by IqwanEngine
                                     </div>
                                 </li>
                                 <li>
-                                    <strong>Paparan Remark BDM</strong>: Kolum
-                                    remark di paparan Admin adalah bersifat
+                                    <strong>Dashboard Remark BDM</strong>:
+                                    Column remark di dashboard Admin adalah
+                                    dalam bentuk
                                     <strong>read-only</strong> (plain text)
-                                    tanpa gangguan dropdown bagi memaparkan
-                                    catatan terkini dari BDM secara bersih dan
-                                    tepat.
+                                    tanpa dropdown bagi memastikan remark
+                                    terkini dari BDM secara tepat.
                                 </li>
                                 <li>
-                                    <strong>Pindaan Admin (Inline Edit)</strong
-                                    >: Sekiranya Admin perlu mengemas kini
-                                    sebarang butiran atau catatan klien, klik
-                                    butang <strong>Edit</strong> pada baris
-                                    rekod tersebut. Menyimpan catatan teks biasa
-                                    akan mengekalkan status sebagai
+                                    <strong
+                                        >Dashboard Admin (Inline Edit)</strong
+                                    >: Sekiranya Admin perlu update sebarang
+                                    butiran atau maklumat klien, klik button
+                                    <strong>Edit</strong> pada baris nama klien
+                                    tersebut. Save remark biasa akan jadikan
+                                    status sebagai klien
                                     <code
                                         class="bg-slate-100 text-slate-800 px-1 py-0.5 rounded font-mono text-[11px]"
                                         >Pending</code
@@ -1450,18 +1449,20 @@ Crafted with precision by IqwanEngine
                                 class="text-xs text-slate-600 pl-8 space-y-3 leading-relaxed"
                             >
                                 <p>
-                                    Pegawai BDM (VT Market Clearance Desk)
+                                    Broker atau BDM (VT Market Clearance Desk)
                                     membuka
                                     <code
                                         class="bg-slate-100 px-1 py-0.5 rounded text-[11px] font-mono"
                                         >dashboard-bdm.html</code
                                     >
-                                    untuk memproses senarai klien berstatus
+                                    untuk check dan proses senarai klien
+                                    berstatus
                                     <strong>Pending</strong>.
                                 </p>
                                 <p>
-                                    Pada kolum <strong>Remark / Action</strong>,
-                                    BDM mempunyai dua mod tindakan utama:
+                                    Pada bahagian
+                                    <strong>Remark / Action</strong>, BDM akan
+                                    ada dua mod pilihan utama:
                                 </p>
 
                                 <!-- Mode A -->
@@ -1475,7 +1476,7 @@ Crafted with precision by IqwanEngine
                                             class="w-2 h-2 rounded-full bg-blue-600"
                                         ></span>
                                         <span
-                                            >A. Mod Catatan Bebas (Type Custom
+                                            >A. Mod Typing Remark (Type Custom
                                             Remark):</span
                                         >
                                     </div>
@@ -1490,14 +1491,15 @@ Crafted with precision by IqwanEngine
                                             >.
                                         </li>
                                         <li>
-                                            Taip sebarang nota atau status
-                                            semasa secara bebas (contoh:
+                                            Taip sebarang notes atau status
+                                            semasa klien tersebut secara type
+                                            (contoh:
                                             <em>"Waiting submission IC"</em>,
                                             <em>"Ada error dokumen"</em>,
                                             <em>"Follow up deposit"</em>).
                                         </li>
                                         <li>
-                                            Klik butang
+                                            Klik button
                                             <strong>[ Update ]</strong>.
                                         </li>
                                     </ul>
@@ -1514,19 +1516,20 @@ Crafted with precision by IqwanEngine
                                             <strong
                                                 >KEKAL DALAM STATUS
                                                 PENDING</strong
-                                            >. Tindakan ini tidak akan menutup
-                                            tiket atau menandakan tugas selesai,
-                                            memastikan kedua-dua pihak sedar
-                                            tindakan susulan masih diperlukan.
+                                            >. Status ini tidak akan jadikan
+                                            proses ini complete atau menandakan
+                                            tugas selesai, untuk memastikan
+                                            kedua-dua pihak faham tindakan
+                                            susulan masih diperlukan.
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-slate-600">
-                                        Tarikh dan masa kemas kini pada
+                                        Tarikh dan update masa pada
                                         <code
                                             class="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono"
                                             >ACTION / TIMESTAMP</code
                                         >
-                                        akan diperbaharui serta-merta.
+                                        akan di update serta-merta.
                                     </div>
                                 </div>
 
@@ -1556,10 +1559,9 @@ Crafted with precision by IqwanEngine
                                             >.
                                         </li>
                                         <li>
-                                            Butang tindakan akan bertukar
-                                            menjadi
+                                            Button action akan bertukar menjadi
                                             <strong>[ Complete ]</strong>
-                                            (Emerald Green).
+                                            (Warna Hijau).
                                         </li>
                                         <li>
                                             Klik
@@ -1568,10 +1570,10 @@ Crafted with precision by IqwanEngine
                                             sepenuhnya di sistem broker.
                                         </li>
                                         <li>
-                                            Status master akan bertukar secara
+                                            Status terakhir akan bertukar secara
                                             rasmi kepada
                                             <strong>Completed</strong> bersama
-                                            lencana pengesahan tarikh dan masa.
+                                            pengesahan tarikh dan masa.
                                         </li>
                                     </ul>
                                 </div>
@@ -1590,7 +1592,7 @@ Crafted with precision by IqwanEngine
                                     >4</span
                                 >
                                 <span
-                                    >4. Penyelarasan Real-Time (Database
+                                    >4. Update Proses Real-Time (Database
                                     Auto-Sync)</span
                                 >
                             </div>
@@ -1598,30 +1600,30 @@ Crafted with precision by IqwanEngine
                                 class="text-xs text-slate-600 pl-8 space-y-1.5 leading-relaxed list-disc list-outside marker:text-emerald-500"
                             >
                                 <li>
-                                    Setiap kemas kini rekod (teks catatan,
-                                    pertukaran status, atau cap masa) disimpan
+                                    Setiap update rekod (teks catatan,
+                                    pertukaran status, atau remark) disimpan
                                     secara terus ke database
                                     <code
                                         class="bg-slate-100 px-1 py-0.5 rounded text-[11px] font-mono"
                                         >clients</code
                                     >
-                                    di Supabase.
+                                    di OWLFX Database.
                                 </li>
                                 <li>
                                     Sebarang catatan atau perubahan status oleh
                                     BDM akan disiarkan secara langsung
                                     (real-time broadcast) ke dashboard Admin
-                                    tanpa memerlukan muat semula halaman (no
-                                    page refresh).
+                                    tanpa perlu refresh page (no page refresh).
                                 </li>
                                 <li>
-                                    Kolum
+                                    Bahagian
                                     <code
                                         class="bg-slate-100 px-1 py-0.5 rounded text-[11px] font-mono"
                                         >Update Date</code
                                     >
-                                    menyediakan jejak audit (audit trail) yang
-                                    tepat bagi setiap pengubahsuaian rekod.
+                                    menyediakan tarikh dan masa (audit trail)
+                                    yang tepat bagi setiap pengubahsuaian rekod
+                                    atau database.
                                 </li>
                             </ul>
                         </div>
@@ -1638,7 +1640,7 @@ Crafted with precision by IqwanEngine
                                     >5</span
                                 >
                                 <span
-                                    >5. Kawalan Keselamatan Pemadaman Rekod
+                                    >5. Kawalan Keselamatan 'Delete' Rekod
                                     (Record Deletion)</span
                                 >
                             </div>
@@ -1646,9 +1648,10 @@ Crafted with precision by IqwanEngine
                                 class="text-xs text-slate-600 pl-8 space-y-1.5 leading-relaxed list-disc list-outside marker:text-rose-500"
                             >
                                 <li>
-                                    Butang <strong>Delete</strong> hanya
+                                    Button <strong>Delete</strong> hanya
                                     digunakan bagi rekod ujian (testing), pendua
                                     (duplicates), atau pendaftaran tidak sah.
+                                    (Bergantung Pada Admin Owl-Fx).
                                 </li>
                                 <li>
                                     Sistem dilindungi oleh
@@ -1660,7 +1663,7 @@ Crafted with precision by IqwanEngine
                                 <li>
                                     Pengesahan diperlukan sebelum rekod
                                     dipadamkan secara kekal daripada database
-                                    Supabase.
+                                    OWLFX Database.
                                 </li>
                             </ul>
                         </div>
@@ -1688,13 +1691,13 @@ Crafted with precision by IqwanEngine
                                 <span
                                     class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300"
                                 >
-                                    Zon Sensitif
+                                    Zon Bahaya
                                 </span>
                             </div>
                             <p
                                 class="text-xs text-amber-900 mt-1 leading-relaxed"
                             >
-                                Gunakan code ini selepas perubahan atau
+                                Code ini digunakan selepas perubahan atau
                                 penambahan column jadual baru di Owl-Fx Database
                                 (seperti
                                 <code
@@ -1737,7 +1740,7 @@ Crafted with precision by IqwanEngine
                                             d="M13 10V3L4 14h7v7l9-11h-7z"
                                         />
                                     </svg>
-                                    <span>Reload Scheme</span>
+                                    <span>Reload Server</span>
                                 </button>
 
                                 <button
@@ -1818,7 +1821,8 @@ Crafted with precision by IqwanEngine
                             <p class="text-xs text-slate-500 leading-relaxed">
                                 Hasilkan 3 rekod ujian serentak (1 New, 1
                                 Pending BDM, 1 Completed) untuk test sebarang
-                                proses kerja tanpa mengisi borang secara manual.
+                                proses server dan kerja tanpa mengisi borang
+                                secara manual.
                             </p>
                             <div class="flex flex-wrap items-center gap-2 pt-1">
                                 <button
